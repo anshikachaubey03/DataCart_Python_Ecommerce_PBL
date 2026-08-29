@@ -257,6 +257,9 @@
             </div>
 
             <div class="prime-delivery-tag">✓ FREE Delivery by Tomorrow</div>
+            <div style="font-size:11px; color:#565959; margin-top:2px;">
+              Sold by: <span style="color:#007185; font-weight:700;">{{ p.store_name if 'store_name' in p.keys() and p.store_name else 'DataCart Official' }}</span>
+            </div>
 
             <div class="product-actions">
               <form method="post" action="{{ url_for('add_cart', pid=p.id) }}" style="width:100%">

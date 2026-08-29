@@ -86,6 +86,19 @@
           <span class="line-2" style="color:var(--amz-accent)">Offers 🎁</span>
         </a>
 
+        <!-- Merchant Seller Central Link -->
+        {% if is_merchant %}
+          <a class="nav-item" href="{{ url_for('merchant_dashboard') }}" title="Amazon Seller Central">
+            <span class="line-1">Store: {{ merchant_store_name[:12] }}</span>
+            <span class="line-2" style="color:#febd69;">Seller Hub 📦</span>
+          </a>
+        {% else %}
+          <a class="nav-item" href="{{ url_for('merchant_register') }}" title="Sell on DataCart Marketplace">
+            <span class="line-1">Become a</span>
+            <span class="line-2" style="color:#febd69;">Seller 📦</span>
+          </a>
+        {% endif %}
+
         <!-- Cart with Live Count Badge -->
         <a class="nav-cart-btn" href="{{ url_for('cart') }}">
           <div class="cart-icon-wrapper">
@@ -103,13 +116,16 @@
       <div class="nav-sub-inner">
         <a class="nav-sub-link highlight" href="{{ url_for('home') }}">☰ All Products</a>
         <a class="nav-sub-link analytics-pill" href="{{ url_for('analytics') }}">⚡ Customer Analytics Hub (BI)</a>
+        <a class="nav-sub-link" href="{{ url_for('merchant_dashboard' if is_merchant else 'merchant_register') }}" style="color:#febd69; font-weight:700;">
+          📦 {% if is_merchant %}Seller Central{% else %}Sell on DataCart{% endif %}
+        </a>
         <a class="nav-sub-link" href="{{ url_for('offers') }}">Today's Deals</a>
         <a class="nav-sub-link" href="{{ url_for('home', category='Computers') }}">Computers & Laptops</a>
         <a class="nav-sub-link" href="{{ url_for('home', category='Audio') }}">Audio & Headphones</a>
+        <a class="nav-sub-link" href="{{ url_for('home', category='Gaming') }}">Gaming</a>
         <a class="nav-sub-link" href="{{ url_for('home', category='Accessories') }}">Tech Accessories</a>
         <a class="nav-sub-link" href="{{ url_for('home', category='Wearables') }}">Smart Wearables</a>
         <a class="nav-sub-link" href="{{ url_for('home', category='Books') }}">Data Science Books</a>
-        <a class="nav-sub-link" href="{{ url_for('home', category='Gaming') }}">Gaming</a>
         <a class="nav-sub-link" href="{{ url_for('home', category='Home') }}">Smart Home</a>
       </div>
     </nav>

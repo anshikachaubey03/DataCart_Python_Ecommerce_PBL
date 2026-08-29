@@ -1,56 +1,100 @@
 {% extends "base.html" %}
 
-{% block title %}{% if mode == 'register' %}Create Account{% else %}Sign-In{% endif %} — DataCart{% endblock %}
+{% block title %}
+  {% if mode == 'merchant_register' %}Register Seller Account — DataCart Seller Central
+  {% elif mode == 'merchant_login' %}Sign-In to Seller Central — DataCart
+  {% elif mode == 'register' %}Create Account — DataCart
+  {% else %}Sign-In — DataCart{% endif %}
+{% endblock %}
 
 {% block content %}
 
-<div style="max-width:440px; margin:30px auto;">
+<div style="max-width:480px; margin:30px auto;">
   
   <div class="section-box" style="padding:28px;">
     
-    <h1 style="font-size:24px; font-weight:700; margin-bottom:18px;">
-      {% if mode == 'register' %}Create Account{% else %}Sign-In{% endif %}
-    </h1>
+    <div style="margin-bottom:18px;">
+      {% if 'merchant' in mode %}
+        <span class="hero-tag" style="background:#febd69; color:#111;">📦 Seller Central Portal</span>
+      {% endif %}
+      <h1 style="font-size:24px; font-weight:700; margin-top:6px;">
+        {% if mode == 'merchant_register' %}Start Selling on DataCart
+        {% elif mode == 'merchant_login' %}Sign-In to Seller Central
+        {% elif mode == 'register' %}Create Customer Account
+        {% else %}Customer Sign-In{% endif %}
+      </h1>
+    </div>
 
-    <form method="post" action="{% if mode == 'register' %}{{ url_for('register') }}{% else %}{{ url_for('login', next=request.args.get('next')) }}{% endif %}">
+    <form method="post" action="
+      {% if mode == 'merchant_register' %}{{ url_for('merchant_register') }}
+      {% elif mode == 'merchant_login' %}{{ url_for('merchant_login') }}
+      {% elif mode == 'register' %}{{ url_for('register') }}
+      {% else %}{{ url_for('login', next=request.args.get('next')) }}{% endif %}
+    ">
       
-      {% if mode == 'register' %}
+      {% if mode == 'merchant_register' %}
         <div style="margin-bottom:14px;">
-          <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">Your name</label>
+          <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">Store / Business Name *</label>
+          <input type="text" name="store_name" class="dark-input" style="background:#fff; color:#111; border:1px solid #888; width:100%;" placeholder="e.g. Apex Electronics, TechNova Store" required>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">Owner / Merchant Name *</label>
+          <input type="text" name="name" class="dark-input" style="background:#fff; color:#111; border:1px solid #888; width:100%;" placeholder="Full name of store owner" required>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">GSTIN / Seller Business ID (Optional)</label>
+          <input type="text" name="business_id" class="dark-input" style="background:#fff; color:#111; border:1px solid #888; width:100%;" placeholder="e.g. 24AAAAA0000A1Z5">
+        </div>
+      {% elif mode == 'register' %}
+        <div style="margin-bottom:14px;">
+          <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">Your Name *</label>
           <input type="text" name="name" class="dark-input" style="background:#fff; color:#111; border:1px solid #888; width:100%;" placeholder="First and last name" required>
         </div>
       {% endif %}
 
       <div style="margin-bottom:14px;">
-        <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">Email</label>
+        <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">
+          {% if 'merchant' in mode %}Business Email *{% else %}Email Address *{% endif %}
+        </label>
         <input type="email" name="email" class="dark-input" style="background:#fff; color:#111; border:1px solid #888; width:100%;" placeholder="user@example.com" required>
       </div>
 
       <div style="margin-bottom:18px;">
-        <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">Password</label>
+        <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">Password *</label>
         <input type="password" name="password" class="dark-input" style="background:#fff; color:#111; border:1px solid #888; width:100%;" placeholder="At least 6 characters" required>
       </div>
 
-      {% if mode == 'register' %}
+      {% if mode in ('register', 'merchant_register') %}
         <div style="margin-bottom:14px;">
-          <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">Delivery Address</label>
+          <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">
+            {% if mode == 'merchant_register' %}Warehouse / Store Address{% else %}Delivery Address{% endif %}
+          </label>
           <input type="text" name="address" class="dark-input" style="background:#fff; color:#111; border:1px solid #888; width:100%;" placeholder="Street, City, State">
         </div>
       {% endif %}
 
       <button type="submit" class="btn-amz-buy" style="margin-bottom:16px;">
-        {% if mode == 'register' %}Create your DataCart account{% else %}Continue{% endif %}
+        {% if mode == 'merchant_register' %}Register Merchant & Open Store
+        {% elif mode == 'merchant_login' %}Sign-In to Seller Central
+        {% elif mode == 'register' %}Create Customer Account
+        {% else %}Continue{% endif %}
       </button>
 
-      <div style="font-size:12px; color:var(--amz-muted); line-height:1.5; margin-bottom:16px;">
-        By continuing, you agree to DataCart's Conditions of Use and Privacy Notice.
-      </div>
-
-      <div style="border-top:1px solid var(--amz-border-subtle); padding-top:14px; text-align:center; font-size:13px;">
-        {% if mode == 'register' %}
-          Already have an account? <a href="{{ url_for('login') }}" style="font-weight:700;">Sign in →</a>
+      <div style="border-top:1px solid var(--amz-border-subtle); padding-top:14px; text-align:center; font-size:13px; display:flex; flex-direction:column; gap:8px;">
+        {% if mode == 'merchant_register' %}
+          <div>Already a seller? <a href="{{ url_for('merchant_login') }}" style="font-weight:700;">Seller Sign-In →</a></div>
+          <div>Looking to buy items? <a href="{{ url_for('login') }}">Customer Sign-In →</a></div>
+        {% elif mode == 'merchant_login' %}
+          <div>New seller? <a href="{{ url_for('merchant_register') }}" style="font-weight:700;">Register as a Merchant →</a></div>
+          <div>Looking to buy items? <a href="{{ url_for('login') }}">Customer Sign-In →</a></div>
+        {% elif mode == 'register' %}
+          <div>Already have an account? <a href="{{ url_for('login') }}" style="font-weight:700;">Sign in →</a></div>
+          <div>Want to sell products? <a href="{{ url_for('merchant_register') }}" style="color:var(--amz-orange); font-weight:700;">Sell on DataCart →</a></div>
         {% else %}
-          New to DataCart? <a href="{{ url_for('register') }}" style="font-weight:700;">Create your account →</a>
+          <div>New to DataCart? <a href="{{ url_for('register') }}" style="font-weight:700;">Create your account →</a></div>
+          <div>Are you a merchant? <a href="{{ url_for('merchant_login') }}" style="color:var(--amz-orange); font-weight:700;">Seller Central Sign-In →</a></div>
         {% endif %}
       </div>
 
@@ -58,15 +102,14 @@
 
   </div>
 
-  <!-- Real-Time Customer Analytics Note -->
+  <!-- Real-Time Merchant Note -->
   <div class="section-box" style="margin-top:20px; background:#f8fafc; border:1px dashed #3b82f6; padding:20px;">
     <h3 style="font-size:14px; font-weight:800; color:var(--amz-text); margin-bottom:6px;">
-      🔴 Live Real-Time Analytics Active
+      ⚡ Real-Time Multi-Vendor Selling
     </h3>
-    <p style="font-size:12px; color:var(--amz-muted); line-height:1.6;">
-      Create an account with your own name or log in. Every product you browse, add to cart, or purchase 
-      is tracked dynamically in real-time, instantly calculating your <strong>Priority Score</strong>, 
-      <strong>RFM Segment</strong>, and <strong>Personalized Retention Discounts</strong>!
+    <p style="font-size:12px; color:var(--amz-muted); line-height:1.6; margin:0;">
+      Register as a Merchant to list products with live inventory, custom badges, and prices. 
+      When shoppers place orders, inventory and merchant earnings update in real-time!
     </p>
   </div>
 

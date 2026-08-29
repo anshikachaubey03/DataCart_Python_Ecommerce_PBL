@@ -118,7 +118,8 @@
 
     <div style="font-size:11px; color:var(--amz-muted); margin-top:16px; border-top:1px solid var(--amz-border-subtle); padding-top:12px; line-height:1.6;">
       🔒 Secure transaction with tokenized demo payments.<br>
-      Ships from and sold by <strong>DataCart Retail Services</strong>.
+      Ships from <strong>DataCart Express</strong><br>
+      Sold by <strong style="color:var(--amz-blue);">{{ product.store_name if 'store_name' in product.keys() and product.store_name else 'DataCart Official' }}</strong> (Verified Merchant)
     </div>
   </div>
 
