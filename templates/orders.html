@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Your Orders — DataCart{% endblock %}
+
+{% block content %}
+
+<div style="max-width:1000px; margin:0 auto;">
+  
+  <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:20px; border-bottom:1px solid var(--amz-border-subtle); padding-bottom:12px;">
+    <h1 style="font-size:26px; font-weight:700;">Your Orders</h1>
+    <span style="font-size:14px; color:var(--amz-muted);">{{ orders_with_items|length }} orders placed</span>
+  </div>
+
+  {% if orders_with_items %}
+    <div style="display:flex; flex-direction:column; gap:20px;">
+      {% for o in orders_with_items %}
+        <div class="section-box" style="padding:0; overflow:hidden;">
+          
+          <!-- Order Card Header -->
+          <div style="background:#f0f2f2; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; border-bottom:1px solid var(--amz-border-subtle); font-size:12px;">
+            <div style="display:flex; gap:24px; flex-wrap:wrap;">
+              <div>
+                <span style="color:var(--amz-muted); display:block;">ORDER PLACED</span>
+                <strong>{{ o.order.created_at[:10] }}</strong>
+              </div>
+              <div>
+                <span style="color:var(--amz-muted); display:block;">TOTAL</span>
+                <strong>₹{{"{:,.0f}".format(o.order.total)}}</strong>
+              </div>
+              <div>
+                <span style="color:var(--amz-muted); display:block;">SHIP TO</span>
+                <strong>{{ session.get('customer_name', 'Customer') }}</strong>
+              </div>
+            </div>
+
+            <div>
+              <span style="color:var(--amz-muted); display:block;">ORDER # DC-{{ o.order.id }}</span>
+              <span style="color:var(--amz-blue); font-weight:700;">Tracking: {{ o.order.tracking_id }}</span>
+            </div>
+          </div>
+
+          <!-- Order Card Body -->
+          <div style="padding:20px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+              <span style="color:var(--amz-green); font-size:18px; font-weight:800;">✓ {{ o.order.status }}</span>
+              <span style="font-size:13px; color:var(--amz-muted);">Package was handed directly to a resident</span>
+            </div>
+
+            {% for item in o.items %}
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid #f1f5f9; gap:16px;">
+                <div style="display:flex; align-items:center; gap:16px;">
+                  <img src="{{ item.image_url }}" alt="{{ item.product_name }}" style="width:70px; height:70px; object-fit:contain; border:1px solid #eee; border-radius:6px; padding:4px;">
+                  <div>
+                    <a href="{{ url_for('product', pid=item.product_id) }}" style="font-weight:700; font-size:14px; color:var(--amz-text); display:block;">
+                      {{ item.product_name }}
+                    </a>
+                    <div style="font-size:12px; color:var(--amz-muted); margin-top:2px;">
+                      Qty: {{ item.quantity }} · ₹{{"{:,.0f}".format(item.price)}} each
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:6px; min-width:160px;">
+                  <form method="post" action="{{ url_for('add_cart', pid=item.product_id) }}">
+                    <button class="btn-amz-primary" style="font-size:12px; padding:6px 12px;" type="submit">
+                      Buy it again
+                    </button>
+                  </form>
+                  <a href="{{ url_for('product', pid=item.product_id) }}" class="btn-amz-secondary" style="font-size:12px; padding:6px 12px; text-align:center;">
+                    View item details
+                  </a>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="section-box" style="text-align:center; padding:50px 20px;">
+      <h2>You have not placed any orders yet</h2>
+      <p style="color:var(--amz-muted); margin-top:8px;">Check out today's top deals and start shopping!</p>
+      <a href="{{ url_for('home') }}" class="btn-amz-buy" style="display:inline-block; margin-top:16px; max-width:200px;">
+        Start Shopping
+      </a>
+    </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,654 @@
+{% extends "base.html" %}
+
+{% block title %}Real-Time Customer Analytics & Telemetry Hub — DataCart{% endblock %}
+
+{% block content %}
+
+<div class="analytics-portal">
+  
+  <!-- Analytics Hub Header -->
+  <div class="analytics-header">
+    <div class="analytics-title">
+      <h1>
+        <span>⚡ Real-Time Customer Analytics Hub</span>
+        <span class="analytics-badge" style="background:#10b981;">🔴 LIVE DATA STREAM</span>
+      </h1>
+      <p>
+        Dynamic RFM Behavioral Segmentation, Live Predictive Churn Scoring, and Market Basket Association Rules computed in Real-Time via Python.
+      </p>
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <button class="btn-amz-primary" style="font-size:12px; padding:6px 14px; color:#111;" onclick="fetchLiveTelemetry()">
+        🔄 Refresh Live Stream
+      </button>
+      <form method="post" action="{{ url_for('admin_reset_data') }}" onsubmit="return confirm('Are you sure you want to reset all customer data and start from a clean slate?');">
+        <button type="submit" class="btn-amz-secondary" style="font-size:12px; padding:6px 14px; background:#450a0a; color:#fca5a5; border-color:#991b1b;">
+          🗑️ Reset Clean Data
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Real-Time Activity Feed Ticker -->
+  <div class="data-table-card" style="background:#091422; border:1px solid #1e3a5f; padding:16px; margin-bottom:24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#22c55e; animation:pulse 1.5s infinite;"></span>
+        <strong style="font-size:14px; color:#f8fafc;">Live Customer Telemetry Stream</strong>
+      </div>
+      <span style="font-size:11px; color:#94a3b8;" id="liveTimestamp">Updating automatically...</span>
+    </div>
+    
+    <div id="liveEventsBox" style="display:flex; flex-direction:column; gap:6px; max-height:160px; overflow-y:auto; font-size:12px; font-family:monospace;">
+      <div style="color:#64748b;">Connecting to real-time Python telemetry stream...</div>
+    </div>
+  </div>
+
+  <!-- Executive Summary KPI Cards -->
+  <div class="kpi-cards-grid">
+    
+    <div class="kpi-card">
+      <span class="kpi-label">Total Real-Time Revenue</span>
+      <span class="kpi-val" id="kpiRevenue">₹{{"{:,.0f}".format(kpis.total_revenue)}}</span>
+      <span class="kpi-sub">{{ kpis.total_orders }} live completed orders</span>
+    </div>
+
+    <div class="kpi-card">
+      <span class="kpi-label">Registered Shoppers</span>
+      <span class="kpi-val" id="kpiCustomers">{{ kpis.total_customers }}</span>
+      <span class="kpi-sub">{{ kpis.champions_count }} VIP Champions identified</span>
+    </div>
+
+    <div class="kpi-card">
+      <span class="kpi-label">Avg. Order Value (AOV)</span>
+      <span class="kpi-val" id="kpiAOV">₹{{"{:,.0f}".format(kpis.avg_order_value)}}</span>
+      <span class="kpi-sub">Real-time basket mean</span>
+    </div>
+
+    <div class="kpi-card">
+      <span class="kpi-label">At-Risk Churn Alert</span>
+      <span class="kpi-val" style="color:#f87171;" id="kpiAtRisk">{{ kpis.at_risk_count }}</span>
+      <span class="kpi-sub">Require retention offers</span>
+    </div>
+
+    <div class="kpi-card">
+      <span class="kpi-label">Avg Churn Probability</span>
+      <span class="kpi-val" style="color:#fbbf24;" id="kpiChurn">{{ kpis.avg_churn_risk }}%</span>
+      <span class="kpi-sub">Computed via RFM heuristic</span>
+    </div>
+
+  </div>
+
+  <!-- Interactive Chart.js Visualizations Grid -->
+  <div class="charts-grid">
+    
+    <!-- Chart 1: Revenue & Order Timeline -->
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <h3>📈 Real-Time Sales & Revenue Timeline</h3>
+        <span style="font-size:11px; color:#94a3b8;">Python Time-Series Aggregation</span>
+      </div>
+      <div class="chart-container-box">
+        <canvas id="salesTimelineChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 2: RFM Customer Segmentation Doughnut -->
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <h3>🎯 RFM Customer Cohorts & Segmentation</h3>
+        <span style="font-size:11px; color:#94a3b8;">Champions vs Loyal vs At-Risk</span>
+      </div>
+      <div class="chart-container-box">
+        <canvas id="segmentDoughnutChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 3: Category Revenue & Affinity -->
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <h3>📊 Category Affinity & Revenue Contribution</h3>
+        <span style="font-size:11px; color:#94a3b8;">Live Category Demand</span>
+      </div>
+      <div class="chart-container-box">
+        <canvas id="categoryBarChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 4: Churn Risk vs Lifetime Value Scatter Plot -->
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <h3>⚡ Churn Risk % vs. Customer Lifetime Value (LTV)</h3>
+        <span style="font-size:11px; color:#94a3b8;">Identify High-Value Churning Users</span>
+      </div>
+      <div class="chart-container-box">
+        <canvas id="churnLtvScatterChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Customer Prioritization & Intelligence Table -->
+  <div class="data-table-card" id="customerTable">
+    
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+      <div>
+        <h3 style="font-size:18px; font-weight:800; color:#f8fafc;">
+          👥 Real-Time Customer Prioritization & RFM Matrix
+        </h3>
+        <p style="font-size:12px; color:#94a3b8; margin-top:2px;">
+          Dynamically ranked by Customer Priority Score (Composite of Recency, Frequency, Monetary & Affinity)
+        </p>
+      </div>
+
+      <!-- Table Filter Bar -->
+      <div class="table-filter-bar">
+        <input 
+          type="text" 
+          id="customerSearchInput" 
+          placeholder="Filter by name or category..." 
+          class="dark-input"
+          onkeyup="filterCustomerTable()"
+        >
+        <select id="segmentFilterSelect" class="dark-input" onchange="filterCustomerTable()">
+          <option value="ALL">All Segments</option>
+          <option value="Champions">Champions (VIP)</option>
+          <option value="Loyal">Loyal Customers</option>
+          <option value="Potential">Potential Loyalists</option>
+          <option value="At-Risk">At-Risk / Churn Alert</option>
+          <option value="Hibernating">Hibernating</option>
+          <option value="New">New Shoppers</option>
+        </select>
+      </div>
+    </div>
+
+    {% if customer_analysis %}
+      <div style="overflow-x:auto;">
+        <table class="dark-table" id="custTableEl">
+          <thead>
+            <tr>
+              <th>Priority</th>
+              <th>Customer Profile</th>
+              <th>Recency</th>
+              <th>Frequency</th>
+              <th>Total Spend (LTV)</th>
+              <th>Top Affinity</th>
+              <th>Churn Risk</th>
+              <th>Behavior Segment</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in customer_analysis %}
+              <tr data-segment="{{ c.segment }}" data-name="{{ c.name }}" data-category="{{ c.top_category }}">
+                <td>
+                  <span style="font-weight:900; font-size:15px; color:{% if c.priority_score >= 80 %}#42e8b4{% elif c.priority_score >= 50 %}#38bdf8{% else %}#94a3b8{% endif %};">
+                    {{ c.priority_score }}
+                  </span>
+                  <span style="font-size:10px; color:#64748b; display:block;">/ 100</span>
+                </td>
+                <td>
+                  <strong style="color:#ffffff;">{{ c.name }}</strong>
+                  <div style="font-size:11px; color:#94a3b8;">{{ c.email }}</div>
+                  <div style="font-size:10px; color:#64748b;">Last order: {{ c.last_order_date }}</div>
+                </td>
+                <td>
+                  <strong>{{ c.recency }} days</strong>
+                  <div style="font-size:10px; color:#94a3b8;">Score: R{{ c.r_score }}</div>
+                </td>
+                <td>
+                  <strong>{{ c.frequency }} orders</strong>
+                  <div style="font-size:10px; color:#94a3b8;">Score: F{{ c.f_score }}</div>
+                </td>
+                <td>
+                  <strong style="color:#f8fafc;">₹{{"{:,.0f}".format(c.monetary)}}</strong>
+                  <div style="font-size:10px; color:#94a3b8;">AOV: ₹{{"{:,.0f}".format(c.avg_order_value)}}</div>
+                </td>
+                <td>
+                  <span style="color:#febd69; font-weight:700;">{{ c.top_category }}</span>
+                  <div style="font-size:10px; color:#94a3b8;">{{ c.total_items_bought }} items bought</div>
+                </td>
+                <td style="min-width:130px;">
+                  <div class="risk-meter">
+                    <span style="font-weight:700; font-size:12px; color:{% if c.churn_risk >= 65 %}#f87171{% elif c.churn_risk >= 35 %}#fbbf24{% else %}#4ade80{% endif %};">
+                      {{ c.churn_risk }}%
+                    </span>
+                    <div class="risk-bar-track">
+                      <div 
+                        class="risk-bar-fill {% if c.churn_risk >= 65 %}high{% elif c.churn_risk >= 35 %}med{% else %}low{% endif %}" 
+                        style="width:{{ c.churn_risk }}%;"
+                      ></div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="segment-tag {% if 'Champions' in c.segment %}champions{% elif 'Loyal' in c.segment %}loyal{% elif 'Potential' in c.segment %}potential{% elif 'At-Risk' in c.segment %}at-risk{% elif 'Hibernating' in c.segment %}hibernating{% else %}new{% endif %}">
+                    {{ c.segment }}
+                  </span>
+                </td>
+                <td>
+                  <button 
+                    class="btn-amz-secondary" 
+                    style="padding:4px 10px; font-size:11px; background:#1e293b; color:#38bdf8; border-color:#334155;"
+                    onclick="openCustomerModal({{ c.id }})"
+                  >
+                    Deep Dive 🔍
+                  </button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div style="text-align:center; padding:40px 20px; background:#0f1c2d; border-radius:8px; border:1px dashed #334155;">
+        <h4 style="color:#f8fafc; font-size:16px; margin-bottom:8px;">No Registered Customers Yet in Real-Time Stream</h4>
+        <p style="color:#94a3b8; font-size:13px; max-width:550px; margin:0 auto 16px;">
+          To see real-time customer behavior analytics in action: Open another browser window, create an account via 
+          <strong><a href="{{ url_for('register') }}" style="color:#38bdf8;">Register</a></strong>, browse items, and complete a checkout!
+        </p>
+        <a href="{{ url_for('register') }}" class="btn-amz-buy" style="display:inline-block; max-width:220px; font-size:13px;">
+          Create Real Customer Account
+        </a>
+      </div>
+    {% endif %}
+
+  </div>
+
+  <!-- Market Basket Analysis: Association Rules Matrix -->
+  <div class="data-table-card" id="marketBasket">
+    <div style="margin-bottom:16px;">
+      <h3 style="font-size:18px; font-weight:800; color:#f8fafc;">
+        🛒 Market Basket Association Rules (Frequently Bought Together)
+      </h3>
+      <p style="font-size:12px; color:#94a3b8; margin-top:2px;">
+        Mined product co-occurrences using Support, Confidence, and Lift metrics (\( \text{Lift} > 1.0 \) indicates strong complementary affinity).
+      </p>
+    </div>
+
+    {% if market_basket_rules %}
+      <div style="overflow-x:auto;">
+        <table class="dark-table">
+          <thead>
+            <tr>
+              <th>Primary Item (A)</th>
+              <th></th>
+              <th>Associated Item (B)</th>
+              <th>Co-Purchases</th>
+              <th>Support</th>
+              <th>Confidence (A → B)</th>
+              <th>Lift Ratio</th>
+              <th>Recommended Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in market_basket_rules %}
+              <tr>
+                <td>
+                  <strong>{{ r.p1_name }}</strong>
+                  <div style="font-size:11px; color:#94a3b8;">{{ r.p1_category }} · ₹{{"{:,.0f}".format(r.p1_price)}}</div>
+                </td>
+                <td style="color:#38bdf8; font-weight:900; font-size:16px;">+</td>
+                <td>
+                  <strong>{{ r.p2_name }}</strong>
+                  <div style="font-size:11px; color:#94a3b8;">{{ r.p2_category }} · ₹{{"{:,.0f}".format(r.p2_price)}}</div>
+                </td>
+                <td><strong>{{ r.co_occurrence }} orders</strong></td>
+                <td>{{ r.support }}%</td>
+                <td><span style="color:#42e8b4; font-weight:700;">{{ r.confidence_1_to_2 }}%</span></td>
+                <td>
+                  <span style="background:#065f46; color:#6ee7b7; padding:2px 8px; border-radius:4px; font-weight:800; font-size:12px;">
+                    {{ r.lift }}x Lift
+                  </span>
+                </td>
+                <td>
+                  <span style="font-size:12px; color:#febd69;">
+                    Bundle Combo: ₹{{"{:,.0f}".format(r.combo_price)}} (Save ₹{{"{:,.0f}".format(r.savings)}})
+                  </span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div style="text-align:center; padding:30px; background:#0f1c2d; border-radius:8px; border:1px dashed #334155;">
+        <p style="color:#94a3b8; font-size:13px;">
+          Market Basket Rules will calculate automatically when multi-item orders are placed by real customers!
+        </p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Campaign & Retention Revenue Simulator -->
+  <div class="data-table-card" style="background:linear-gradient(135deg, #132235, #0f1c2d); border:1px solid #2563eb;">
+    <h3 style="font-size:18px; font-weight:800; color:#f8fafc; margin-bottom:6px;">
+      💡 Real-Time AI Retention Campaign & Revenue Simulator
+    </h3>
+    <p style="font-size:13px; color:#94a3b8; margin-bottom:18px;">
+      Simulate the impact of sending automated dynamic retention vouchers (e.g. <code>COMEBACK25</code>) to At-Risk and Hibernating customers:
+    </p>
+
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-bottom:18px;">
+      <div style="background:#0b1523; padding:14px; border-radius:8px; border:1px solid #1e3a5f;">
+        <span style="font-size:11px; color:#94a3b8;">Targeted Churning Customers</span>
+        <div style="font-size:22px; font-weight:800; color:#f87171;" id="simTargetCount">{{ kpis.at_risk_count }} Shoppers</div>
+      </div>
+
+      <div style="background:#0b1523; padding:14px; border-radius:8px; border:1px solid #1e3a5f;">
+        <span style="font-size:11px; color:#94a3b8;">Estimated Win-Back Conversion (35%)</span>
+        <div style="font-size:22px; font-weight:800; color:#38bdf8;" id="simWinbackCount">{{ (kpis.at_risk_count * 0.35)|round|int }} Shoppers</div>
+      </div>
+
+      <div style="background:#0b1523; padding:14px; border-radius:8px; border:1px solid #1e3a5f;">
+        <span style="font-size:11px; color:#94a3b8;">Projected Recovered Revenue</span>
+        <div style="font-size:22px; font-weight:800; color:#42e8b4;" id="simRecoveredRev">₹{{"{:,.0f}".format((kpis.at_risk_count * 0.35) * kpis.avg_order_value * 0.75)}}</div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:12px; align-items:center;">
+      <button class="btn-amz-buy" style="max-width:260px;" onclick="triggerSimulatedCampaign()">
+        🚀 Trigger Retention Email Blast (Demo)
+      </button>
+      <span id="campaignStatusMsg" style="font-size:13px; color:#42e8b4; font-weight:700;"></span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Customer Profile Deep-Dive Modal -->
+<div class="modal-overlay" id="customerModal" onclick="if(event.target===this) closeCustomerModal()">
+  <div class="modal-card">
+    <button class="modal-close-btn" onclick="closeCustomerModal()">✕</button>
+    <div id="modalLoading" style="text-align:center; padding:30px;">Loading customer analytics...</div>
+    <div id="modalContent" style="display:none;">
+      
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
+        <h2 id="mName" style="font-size:20px; font-weight:800; color:#fff;"></h2>
+        <span id="mSegment" class="segment-tag"></span>
+      </div>
+
+      <p id="mEmail" style="font-size:12px; color:#94a3b8; margin-bottom:16px;"></p>
+
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px;">
+        <div style="background:#132235; padding:10px; border-radius:6px;">
+          <div style="font-size:10px; color:#94a3b8;">Recency</div>
+          <strong id="mRecency" style="font-size:16px; color:#fff;"></strong>
+        </div>
+        <div style="background:#132235; padding:10px; border-radius:6px;">
+          <div style="font-size:10px; color:#94a3b8;">Order Frequency</div>
+          <strong id="mFreq" style="font-size:16px; color:#fff;"></strong>
+        </div>
+        <div style="background:#132235; padding:10px; border-radius:6px;">
+          <div style="font-size:10px; color:#94a3b8;">Lifetime Spend</div>
+          <strong id="mMonetary" style="font-size:16px; color:#42e8b4;"></strong>
+        </div>
+      </div>
+
+      <div style="background:#132235; border:1px solid #1e3a5f; padding:14px; border-radius:8px; margin-bottom:18px;">
+        <div style="font-size:12px; color:#94a3b8; text-transform:uppercase; font-weight:700; margin-bottom:6px;">
+          Tailored Retention Strategy & Dynamic Offer
+        </div>
+        <div id="mOfferTitle" style="font-size:16px; font-weight:800; color:#febd69;"></div>
+        <div id="mOfferDesc" style="font-size:12px; color:#cbd5e1; margin:6px 0 10px;"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:12px; color:#a7d9ff;">Promo Code: <strong id="mOfferCode" style="color:#febd69;"></strong></span>
+        </div>
+      </div>
+
+      <button class="btn-amz-buy" onclick="alert('Action: Real-time retention voucher dispatched to customer!'); closeCustomerModal();">
+        Send Personalized Retention Offer
+      </button>
+
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+</style>
+
+<!-- Interactive Chart.js & Real-Time Stream Polling Script -->
+<script>
+let timelineChart, segmentChart, categoryChart, scatterChart;
+
+document.addEventListener("DOMContentLoaded", function() {
+  
+  // 1. Monthly Revenue & Orders Timeline
+  const ctxTimeline = document.getElementById("salesTimelineChart").getContext("2d");
+  timelineChart = new Chart(ctxTimeline, {
+    type: "line",
+    data: {
+      labels: {{ charts.timeline.labels | tojson }},
+      datasets: [
+        {
+          label: "Revenue (₹)",
+          data: {{ charts.timeline.revenue | tojson }},
+          borderColor: "#38bdf8",
+          backgroundColor: "rgba(56, 189, 248, 0.15)",
+          fill: true,
+          tension: 0.35,
+          yAxisID: "y"
+        },
+        {
+          label: "Orders Count",
+          data: {{ charts.timeline.orders | tojson }},
+          borderColor: "#febd69",
+          backgroundColor: "#febd69",
+          type: "bar",
+          yAxisID: "y1"
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: "#1e293b" }, ticks: { color: "#94a3b8" } },
+        y: { grid: { color: "#1e293b" }, ticks: { color: "#94a3b8" }, title: { display: true, text: "Revenue (₹)", color: "#94a3b8" } },
+        y1: { position: "right", grid: { drawOnChartArea: false }, ticks: { color: "#febd69" }, title: { display: true, text: "Orders", color: "#febd69" } }
+      },
+      plugins: {
+        legend: { labels: { color: "#f8fafc" } }
+      }
+    }
+  });
+
+  // 2. RFM Customer Segments Doughnut
+  const ctxSegment = document.getElementById("segmentDoughnutChart").getContext("2d");
+  segmentChart = new Chart(ctxSegment, {
+    type: "doughnut",
+    data: {
+      labels: {{ charts.segments.labels | tojson }},
+      datasets: [{
+        data: {{ charts.segments.data | tojson }},
+        backgroundColor: ["#059669", "#2563eb", "#d97706", "#dc2626", "#4b5563", "#0d9488"],
+        borderColor: "#132235",
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "right", labels: { color: "#f8fafc", font: { size: 11 } } }
+      }
+    }
+  });
+
+  // 3. Category Revenue & Affinity
+  const ctxCat = document.getElementById("categoryBarChart").getContext("2d");
+  categoryChart = new Chart(ctxCat, {
+    type: "bar",
+    data: {
+      labels: {{ charts.categories.labels | tojson }},
+      datasets: [{
+        label: "Revenue (₹)",
+        data: {{ charts.categories.revenue | tojson }},
+        backgroundColor: "#42e8b4",
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: "#1e293b" }, ticks: { color: "#94a3b8" } },
+        y: { grid: { color: "#1e293b" }, ticks: { color: "#94a3b8" } }
+      },
+      plugins: {
+        legend: { display: false }
+      }
+    }
+  });
+
+  // 4. Churn Risk vs Lifetime Value (Scatter)
+  const ctxScatter = document.getElementById("churnLtvScatterChart").getContext("2d");
+  const scatterRaw = {{ charts.scatter_churn_ltv | tojson }};
+  scatterChart = new Chart(ctxScatter, {
+    type: "scatter",
+    data: {
+      datasets: [{
+        label: "Customer (Risk % vs Spend)",
+        data: scatterRaw.map(p => ({ x: p.x, y: p.y, name: p.name, segment: p.segment })),
+        backgroundColor: scatterRaw.map(p => p.x >= 65 ? "#ef4444" : (p.x >= 35 ? "#f59e0b" : "#22c55e")),
+        pointRadius: 8,
+        pointHoverRadius: 11
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: "#1e293b" }, ticks: { color: "#94a3b8" }, title: { display: true, text: "Churn Risk (%)", color: "#94a3b8" } },
+        y: { grid: { color: "#1e293b" }, ticks: { color: "#94a3b8" }, title: { display: true, text: "Lifetime Spend (₹)", color: "#94a3b8" } }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const pt = context.raw;
+              return `${pt.name} (${pt.segment}): Risk ${pt.x}%, Spend ₹${pt.y.toLocaleString()}`;
+            }
+          }
+        },
+        legend: { display: false }
+      }
+    }
+  });
+
+  // Fetch telemetry immediately and poll every 4 seconds
+  fetchLiveTelemetry();
+  setInterval(fetchLiveTelemetry, 4000);
+});
+
+// Live Telemetry Event Fetcher
+function fetchLiveTelemetry() {
+  fetch("/api/analytics/live-events")
+    .then(r => r.json())
+    .then(events => {
+      const box = document.getElementById("liveEventsBox");
+      const timeEl = document.getElementById("liveTimestamp");
+      timeEl.innerText = `Updated at ${new Date().toLocaleTimeString()}`;
+
+      if (!events || events.length === 0) {
+        box.innerHTML = `<div style="color:#94a3b8; padding:6px 0;">⚡ Live event stream waiting for user traffic. (Register or view products to see telemetry stream)</div>`;
+        return;
+      }
+
+      let html = "";
+      events.forEach(ev => {
+        let badgeColor = "#38bdf8";
+        let icon = "👁️";
+        if (ev.event_type === "purchase") { badgeColor = "#22c55e"; icon = "💰"; }
+        else if (ev.event_type === "cart") { badgeColor = "#f59e0b"; icon = "🛒"; }
+        else if (ev.event_type === "register") { badgeColor = "#a855f7"; icon = "✨"; }
+        else if (ev.event_type === "login") { badgeColor = "#06b6d4"; icon = "🔑"; }
+
+        const timeFormatted = ev.created_at ? ev.created_at.substring(11, 19) : "";
+        html += `
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding:4px 0;">
+            <div>
+              <span style="color:${badgeColor}; font-weight:700;">[${ev.event_type.toUpperCase()}]</span> 
+              <span>${icon} <strong>${ev.customer_name}</strong></span>: 
+              <span style="color:#cbd5e1;">${ev.product_name}</span>
+            </div>
+            <span style="color:#64748b; font-size:11px;">${timeFormatted} UTC</span>
+          </div>
+        `;
+      });
+      box.innerHTML = html;
+    })
+    .catch(() => {});
+}
+
+// Filter Customer Table Script
+function filterCustomerTable() {
+  const query = document.getElementById("customerSearchInput").value.toLowerCase();
+  const segment = document.getElementById("segmentFilterSelect").value;
+  const rows = document.querySelectorAll("#custTableEl tbody tr");
+
+  rows.forEach(r => {
+    const rSegment = r.getAttribute("data-segment") || "";
+    const rName = (r.getAttribute("data-name") || "").toLowerCase();
+    const rCat = (r.getAttribute("data-category") || "").toLowerCase();
+
+    const matchQuery = !query || rName.includes(query) || rCat.includes(query);
+    const matchSegment = (segment === "ALL") || (rSegment.includes(segment));
+
+    r.style.display = (matchQuery && matchSegment) ? "" : "none";
+  });
+}
+
+// Modal Drilldown Script
+function openCustomerModal(cid) {
+  const modal = document.getElementById("customerModal");
+  const loading = document.getElementById("modalLoading");
+  const content = document.getElementById("modalContent");
+  
+  modal.style.display = "flex";
+  loading.style.display = "block";
+  content.style.display = "none";
+
+  fetch(`/api/customer/${cid}/profile`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === "success") {
+        const c = data.customer;
+        document.getElementById("mName").innerText = c.name;
+        document.getElementById("mEmail").innerText = `${c.email} · Top Preferred Category: ${c.top_category}`;
+        document.getElementById("mSegment").innerText = c.segment;
+        document.getElementById("mRecency").innerText = `${c.recency} days`;
+        document.getElementById("mFreq").innerText = `${c.frequency} orders`;
+        document.getElementById("mMonetary").innerText = `₹${c.monetary.toLocaleString()}`;
+        
+        document.getElementById("mOfferTitle").innerText = c.personalized_offer.title;
+        document.getElementById("mOfferDesc").innerText = c.personalized_offer.description;
+        document.getElementById("mOfferCode").innerText = `${c.personalized_offer.code} (${c.personalized_offer.discount_pct}% OFF)`;
+
+        loading.style.display = "none";
+        content.style.display = "block";
+      }
+    })
+    .catch(err => {
+      loading.innerText = "Error loading customer details.";
+    });
+}
+
+function closeCustomerModal() {
+  document.getElementById("customerModal").style.display = "none";
+}
+
+function triggerSimulatedCampaign() {
+  const msgEl = document.getElementById("campaignStatusMsg");
+  msgEl.innerText = "✓ Live Retention Campaign Triggered! Real-time retention vouchers dispatched.";
+  setTimeout(() => { msgEl.innerText = ""; }, 5000);
+}
+</script>
+
+{% endblock %}

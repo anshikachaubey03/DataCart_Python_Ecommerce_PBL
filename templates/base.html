@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}DataCart — Amazon-Inspired Python E-Commerce & Data Analytics{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- Chart.js for Interactive Python Data Analytics Dashboard -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Amazon Top Navigation Header -->
+  <header class="nav-header">
+    <div class="nav-top">
+      
+      <!-- Brand Logo -->
+      <a class="brand-logo" href="{{ url_for('home') }}">
+        <span>Data<span class="logo-accent">Cart</span></span>
+        <span class="logo-badge">PBL .py</span>
+      </a>
+
+      <!-- Deliver To Location -->
+      <div class="nav-delivery" onclick="alert('Location delivery routing: Bharuch / Gujarat (392001)')">
+        <div class="loc-icon">📍</div>
+        <div class="loc-text">
+          <span>Deliver to</span>
+          <strong>{% if session.get('customer_name') %}{{ session['customer_name'].split()[0] }}{% else %}Gujarat 392001{% endif %}</strong>
+        </div>
+      </div>
+
+      <!-- Amazon Universal Search Bar -->
+      <div class="search-form-wrapper">
+        <form class="search-form" action="{{ url_for('home') }}" method="get">
+          <select class="search-category-select" name="category">
+            <option value="">All Categories</option>
+            {% for cat in all_categories %}
+              <option value="{{ cat }}" {% if request.args.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+          </select>
+          <input 
+            class="search-input" 
+            type="text" 
+            name="q" 
+            value="{{ request.args.get('q', '') }}" 
+            placeholder="Search DataCart (e.g. MacBook, Sony headphones, mechanical keyboard, SSD...)" 
+            autocomplete="off"
+          >
+          <button class="search-btn" type="submit" title="Search">
+            🔍
+          </button>
+        </form>
+      </div>
+
+      <!-- Right Navigation Actions -->
+      <div class="nav-actions">
+        
+        <!-- Account & Lists -->
+        {% if session.get('customer_id') %}
+          <div class="nav-item">
+            <span class="line-1">Hello, {{ session['customer_name'].split()[0] }}</span>
+            <span class="line-2">
+              <a href="{{ url_for('offers') }}" style="color:#febd69; font-weight:700;">My Deals</a> · 
+              <a href="{{ url_for('logout') }}" style="color:#ffffff;">Sign Out</a>
+            </span>
+          </div>
+        {% else %}
+          <a class="nav-item" href="{{ url_for('login') }}">
+            <span class="line-1">Hello, sign in</span>
+            <span class="line-2">Account & Lists ▾</span>
+          </a>
+        {% endif %}
+
+        <!-- Returns & Orders -->
+        <a class="nav-item" href="{{ url_for('orders') }}">
+          <span class="line-1">Returns</span>
+          <span class="line-2">& Orders</span>
+        </a>
+
+        <!-- Personalized Deals / Offers -->
+        <a class="nav-item" href="{{ url_for('offers') }}" title="Your Targeted AI Discount Deals">
+          <span class="line-1">Smart</span>
+          <span class="line-2" style="color:var(--amz-accent)">Offers 🎁</span>
+        </a>
+
+        <!-- Cart with Live Count Badge -->
+        <a class="nav-cart-btn" href="{{ url_for('cart') }}">
+          <div class="cart-icon-wrapper">
+            🛒
+            <span class="cart-badge-count">{{ cart_count }}</span>
+          </div>
+          <span style="font-weight: 700; font-size: 14px; margin-top: 8px;">Cart</span>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- Secondary Navigation Sub-bar -->
+    <nav class="nav-sub">
+      <div class="nav-sub-inner">
+        <a class="nav-sub-link highlight" href="{{ url_for('home') }}">☰ All Products</a>
+        <a class="nav-sub-link analytics-pill" href="{{ url_for('analytics') }}">⚡ Customer Analytics Hub (BI)</a>
+        <a class="nav-sub-link" href="{{ url_for('offers') }}">Today's Deals</a>
+        <a class="nav-sub-link" href="{{ url_for('home', category='Computers') }}">Computers & Laptops</a>
+        <a class="nav-sub-link" href="{{ url_for('home', category='Audio') }}">Audio & Headphones</a>
+        <a class="nav-sub-link" href="{{ url_for('home', category='Accessories') }}">Tech Accessories</a>
+        <a class="nav-sub-link" href="{{ url_for('home', category='Wearables') }}">Smart Wearables</a>
+        <a class="nav-sub-link" href="{{ url_for('home', category='Books') }}">Data Science Books</a>
+        <a class="nav-sub-link" href="{{ url_for('home', category='Gaming') }}">Gaming</a>
+        <a class="nav-sub-link" href="{{ url_for('home', category='Home') }}">Smart Home</a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- User Segment & AI Retention Offer Strip (Shown for signed-in users) -->
+  {% if active_user_offer and session.get('customer_id') %}
+    <div class="user-personalized-strip">
+      <div class="strip-inner">
+        <div>
+          <span class="strip-badge">{{ active_user_offer.badge }}</span>
+          <strong>Exclusive for {{ session['customer_name'] }}:</strong>
+          {{ active_user_offer.title }} — Use Promo Code <code style="background:#081522; padding:2px 6px; border-radius:4px; color:#febd69; font-weight:800;">{{ active_user_offer.code }}</code> at checkout!
+        </div>
+        <a href="{{ url_for('offers') }}" style="color:#febd69; font-weight:700; font-size:12px;">View All My Deals →</a>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Main Content Body -->
+  <main class="page-wrapper">
+    
+    <!-- Flash Messages Container -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container">
+          {% for category, message in messages %}
+            <div class="flash-msg {{ category }}">
+              <span>{{ message }}</span>
+              <span style="cursor:pointer; opacity:0.7;" onclick="this.parentElement.style.display='none'">✕</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
+  </main>
+
+  <!-- Amazon-Style Multi-Column Footer -->
+  <footer class="amz-footer">
+    <a class="back-to-top" href="#top" onclick="window.scrollTo({top:0, behavior:'smooth'}); return false;">
+      ▲ Back to top
+    </a>
+
+    <div class="footer-content">
+      <div class="footer-col">
+        <h4>Get to Know Us</h4>
+        <ul>
+          <li><a href="{{ url_for('home') }}">About DataCart</a></li>
+          <li><a href="{{ url_for('analytics') }}">Customer Behavior Analytics</a></li>
+          <li><a href="{{ url_for('analytics') }}">RFM Churn Prediction Model</a></li>
+          <li><a href="{{ url_for('analytics') }}">Market Basket Association Rules</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Python Tech Stack</h4>
+        <ul>
+          <li><a href="#">Flask 3.0 Web Core</a></li>
+          <li><a href="#">Pandas & NumPy Analytics</a></li>
+          <li><a href="#">Scikit-Learn ML Algorithms</a></li>
+          <li><a href="#">SQLite Relational Store</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Customer Intelligence</h4>
+        <ul>
+          <li><a href="{{ url_for('offers') }}">Personalized Dynamic Coupons</a></li>
+          <li><a href="{{ url_for('analytics') }}">VIP Customer Prioritization</a></li>
+          <li><a href="{{ url_for('analytics') }}">Churn Retention Opportunities</a></li>
+          <li><a href="{{ url_for('cart') }}">Frequently Bought Together</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Real-Time Telemetry</h4>
+        <ul>
+          <li><a href="{{ url_for('register') }}">Create Real Customer Account</a></li>
+          <li><a href="{{ url_for('login') }}">Sign In to Session</a></li>
+          <li><a href="{{ url_for('analytics') }}">Live BI Stream & Telemetry</a></li>
+          <li><a href="{{ url_for('home') }}">Explore Live Catalog</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>DataCart • Python E-Commerce with Advanced Customer Analytics • GTU CSE Project Based Learning</p>
+      <p style="margin-top: 4px; font-size: 11px;">Pure Python Architecture: Inverted Index Search • Cosine Collaborative Filtering • Market Basket Lift • RFM Churn Matrix</p>
+    </div>
+  </footer>
+
+</body>
+</html>

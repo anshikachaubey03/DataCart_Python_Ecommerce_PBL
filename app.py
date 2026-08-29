@@ -1,0 +1,1041 @@
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
+from werkzeug.security import generate_password_hash, check_password_hash
+from collections import defaultdict, deque
+from datetime import datetime, timedelta
+import sqlite3, os, uuid, re, csv, math, json
+
+from analytics_engine import (
+    compute_customer_rfm_and_segments,
+    compute_market_basket_analysis,
+    get_frequently_bought_together,
+    get_executive_bi_dashboard_data,
+    generate_personalized_offer_for_customer
+)
+
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "datacart-python-ecommerce-secret-key-2026")
+DB = os.path.join(os.path.dirname(__file__), "ecommerce.db")
+
+
+# -----------------------------
+# Database Connection & Migration
+# -----------------------------
+def db():
+    conn = sqlite3.connect(DB)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    conn = db()
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS customers(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        address TEXT DEFAULT '',
+        pincode TEXT DEFAULT '392001',
+        created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS products(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        price REAL NOT NULL,
+        original_price REAL NOT NULL,
+        stock INTEGER NOT NULL,
+        category TEXT NOT NULL,
+        rating REAL DEFAULT 4.5,
+        review_count INTEGER DEFAULT 120,
+        badge TEXT DEFAULT '',
+        image_url TEXT DEFAULT '',
+        tags TEXT DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS orders(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        total REAL NOT NULL,
+        discount_amount REAL DEFAULT 0.0,
+        coupon_code TEXT DEFAULT '',
+        payment_status TEXT NOT NULL,
+        tracking_id TEXT,
+        created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS order_items(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
+        quantity INTEGER NOT NULL,
+        price REAL NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS payments(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id INTEGER NOT NULL,
+        method TEXT NOT NULL,
+        txn_status TEXT NOT NULL,
+        token TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS events(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER,
+        product_id INTEGER,
+        event_type TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS reviews(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        customer_name TEXT NOT NULL,
+        rating INTEGER NOT NULL,
+        title TEXT,
+        comment TEXT,
+        created_at TEXT NOT NULL
+    );
+    """)
+
+    # Seed rich products catalog if empty or upgrade if needed
+    count = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
+    if count < 15:
+        # Clear old minimal products and re-seed with rich Amazon-grade catalog
+        conn.execute("DELETE FROM products")
+        products = [
+            (
+                "Apple MacBook Air M2 (13.6-inch, 8GB RAM, 256GB SSD)",
+                "Strikingly thin design with fast M2 chip, 13.6-inch Liquid Retina display, 18-hour battery life, 1080p FaceTime HD camera, and MagSafe charging.",
+                89990.0, 114900.0, 15, "Computers", 4.8, 1842,
+                "Amazon's Choice",
+                "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&auto=format&fit=crop&q=80",
+                "laptop apple macbook air m2 computer thin light display"
+            ),
+            (
+                "Sony WH-1000XM5 Wireless Noise-Cancelling Headphones",
+                "Industry-leading noise cancellation with two processors and 8 microphones. Ultra-comfortable lightweight design, crystal clear hands-free calling, 30-hour battery life.",
+                26990.0, 34990.0, 28, "Audio", 4.7, 3120,
+                "#1 Best Seller",
+                "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=80",
+                "headphones sony wireless noise cancelling audio bluetooth premium"
+            ),
+            (
+                "Keychron K2 V2 Wireless Mechanical Keyboard (RGB Backlit)",
+                "Compact 75% layout wireless/wired mechanical keyboard with Gateron G Pro Brown switches, Mac/Windows compatibility, and 4000mAh battery.",
+                7499.0, 9999.0, 32, "Computers", 4.6, 940,
+                "Limited Time Deal",
+                "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&auto=format&fit=crop&q=80",
+                "keyboard mechanical keychron rgb wireless gaming coding typist"
+            ),
+            (
+                "Logitech MX Master 3S Wireless Performance Mouse",
+                "Quiet Clicks 8K DPI any-surface tracking, ergonomic design, MagSpeed electromagnetic scrolling, USB-C quick charging, cross-computer control.",
+                8495.0, 10995.0, 45, "Accessories", 4.8, 2750,
+                "Amazon's Choice",
+                "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=500&auto=format&fit=crop&q=80",
+                "mouse logitech mx master wireless bluetooth ergonomic productivity"
+            ),
+            (
+                "Samsung 28-inch 4K UHD IPS Monitor (3840 x 2160, HDR10)",
+                "Frameless 4K IPS display with 1 billion colors, AMD FreeSync, dual HDMI and DisplayPort, eye saver mode, and tilt adjustable stand.",
+                22999.0, 31500.0, 18, "Computers", 4.6, 1420,
+                "Prime Deal",
+                "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&auto=format&fit=crop&q=80",
+                "monitor samsung 4k uhd ips display screen gaming office"
+            ),
+            (
+                "Anker 7-in-1 USB-C Hub (4K HDMI, 100W Power Delivery, SD/TF)",
+                "Massive expansion with 4K@60Hz HDMI, 100W PD-IN port, USB-C data port, 2 USB-A data ports, and microSD / SD card readers.",
+                3499.0, 4999.0, 60, "Accessories", 4.5, 3810,
+                "#1 Best Seller",
+                "https://images.unsplash.com/photo-1622445262464-84b14e0745b1?w=500&auto=format&fit=crop&q=80",
+                "usb hub type c anker hdmi multiport adapter macbook laptop"
+            ),
+            (
+                "Apple Watch Series 9 (GPS 45mm, Midnight Aluminium)",
+                "Powerful S9 SiP chip with Double Tap gesture, brighter Always-On Retina display, advanced health sensors for ECG, blood oxygen, and sleep stages.",
+                41900.0, 44900.0, 22, "Wearables", 4.7, 1680,
+                "Amazon's Choice",
+                "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=500&auto=format&fit=crop&q=80",
+                "apple watch series 9 smart watch fitness tracker health wearables"
+            ),
+            (
+                "SanDisk Extreme 1TB Portable External NVMe SSD (Up to 1050MB/s)",
+                "Tough drop-resistant storage with fast NVMe solid state performance, IP55 water and dust resistance, USB-C 3.2 Gen 2 interface.",
+                8999.0, 14500.0, 40, "Storage", 4.8, 5420,
+                "Limited Time Deal",
+                "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=500&auto=format&fit=crop&q=80",
+                "ssd sandisk 1tb portable storage fast backup external drive"
+            ),
+            (
+                "Ergonomic Aluminium Laptop Stand with 360 Rotating Base",
+                "Heavy-duty aluminium laptop riser with cooling vents, height and angle adjustable mechanism, silicone anti-slip pads.",
+                1899.0, 3299.0, 75, "Accessories", 4.5, 1290,
+                "#1 Best Seller",
+                "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=500&auto=format&fit=crop&q=80",
+                "laptop stand aluminium ergonomic desk riser holder office"
+            ),
+            (
+                "Bose QuietComfort 45 Bluetooth Wireless Noise Cancelling",
+                "High-fidelity audio with world-class noise cancelling, TriPort acoustic architecture, Aware Mode, and 24 hours of listening time.",
+                21990.0, 29900.0, 25, "Audio", 4.6, 2100,
+                "Prime Deal",
+                "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=500&auto=format&fit=crop&q=80",
+                "audio bose quietcomfort wireless headphones noise cancelling sound"
+            ),
+            (
+                "Designing Data-Intensive Applications by Martin Kleppmann",
+                "The definitive guide to the architecture of data systems, distributed databases, stream processing, reliability, scalability, and maintainability.",
+                1499.0, 2200.0, 50, "Books", 4.9, 8750,
+                "#1 Best Seller",
+                "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=500&auto=format&fit=crop&q=80",
+                "book data intensive applications python distributed systems database"
+            ),
+            (
+                "Python for Data Analysis (3rd Edition) - Wes McKinney",
+                "Complete guide to data wrangling, pandas, numpy, Jupyter, and scikit-learn by the creator of pandas. Essential for data science PBL.",
+                1199.0, 1850.0, 48, "Books", 4.8, 4310,
+                "Amazon's Choice",
+                "https://images.unsplash.com/photo-1532012164546-f432f2e3edd4?w=500&auto=format&fit=crop&q=80",
+                "python book pandas data analysis data science machine learning"
+            ),
+            (
+                "Echo Dot (5th Gen) Smart Speaker with Alexa & Deep Bass",
+                "Best-sounding Echo Dot yet with vibrant audio, voice control for smart home, music streaming from Spotify/Amazon Music, and motion sensing.",
+                3999.0, 5499.0, 65, "Home", 4.4, 6200,
+                "Amazon's Choice",
+                "https://images.unsplash.com/photo-1543512214-318c7553f230?w=500&auto=format&fit=crop&q=80",
+                "echo dot smart speaker alexa home smart voice assistant"
+            ),
+            (
+                "Philips Hue Smart LED Desk Lamp with 16 Million Colors",
+                "Smart ambient LED lamp with app control, customizable brightness presets, timer schedules, and voice sync with Alexa and Google Assistant.",
+                2799.0, 4199.0, 35, "Home", 4.5, 1140,
+                "Limited Time Deal",
+                "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=500&auto=format&fit=crop&q=80",
+                "lamp smart led philips hue desk light study home"
+            ),
+            (
+                "Razer DeathAdder V3 Pro Wireless Gaming Mouse",
+                "Ultra-lightweight 63g ergonomic gaming mouse with Focus Pro 30K Optical Sensor, Gen-3 Optical Switches, and 90-hour battery life.",
+                11499.0, 14999.0, 20, "Gaming", 4.7, 1890,
+                "Amazon's Choice",
+                "https://images.unsplash.com/photo-1527814050087-73880490b435?w=500&auto=format&fit=crop&q=80",
+                "mouse razer gaming rgb deathadder wireless sensor esports"
+            ),
+            (
+                "HyperX Cloud II Wireless Gaming Headset with 7.1 Surround",
+                "Signature HyperX comfort with memory foam ear cushions, 2.4GHz low-latency gaming-grade wireless, and 30-hour long-lasting battery.",
+                9990.0, 13990.0, 24, "Gaming", 4.6, 3210,
+                "Prime Deal",
+                "https://images.unsplash.com/photo-1599669454699-248893623440?w=500&auto=format&fit=crop&q=80",
+                "headset hyperx gaming wireless surround audio mic discord"
+            )
+        ]
+        conn.executemany("""INSERT INTO products
+            (name, description, price, original_price, stock, category, rating, review_count, badge, image_url, tags)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?)""", products)
+
+    conn.commit()
+    conn.close()
+
+
+init_db()
+
+
+# -----------------------------
+# Inverted-Index & Search Logic
+# -----------------------------
+def tokenize(text):
+    return set(re.findall(r"[a-z0-9]+", (text or "").lower()))
+
+
+def build_inverted_index():
+    conn = db()
+    rows = conn.execute("SELECT id, name, description, category, tags FROM products").fetchall()
+    conn.close()
+    index = defaultdict(set)
+    for p in rows:
+        text = " ".join([p["name"], p["description"] or "", p["category"], p["tags"] or ""])
+        for token in tokenize(text):
+            index[token].add(p["id"])
+    return index
+
+
+def search_products(query="", category="", min_price=None, max_price=None, sort_by="featured"):
+    conn = db()
+    rows = conn.execute("SELECT * FROM products").fetchall()
+    conn.close()
+
+    index = build_inverted_index()
+    q_tokens = tokenize(query)
+    candidate_ids = None
+    if q_tokens:
+        for token in q_tokens:
+            ids = index.get(token, set())
+            candidate_ids = ids if candidate_ids is None else candidate_ids & ids
+    candidates = [p for p in rows if candidate_ids is None or p["id"] in candidate_ids]
+
+    def ok(p):
+        if category and category != "All" and p["category"].lower() != category.lower():
+            return False
+        if min_price is not None and p["price"] < min_price:
+            return False
+        if max_price is not None and p["price"] > max_price:
+            return False
+        return True
+
+    candidates = [p for p in candidates if ok(p)]
+
+    def score(p):
+        text = " ".join([p["name"], p["description"] or "", p["tags"] or ""]).lower()
+        overlap = sum(1 for t in q_tokens if t in tokenize(text))
+        exact = 3 if query and query.lower() in p["name"].lower() else 0
+        return (exact + overlap, p["rating"])
+
+    if sort_by == "price_low":
+        return sorted(candidates, key=lambda x: x["price"])
+    elif sort_by == "price_high":
+        return sorted(candidates, key=lambda x: x["price"], reverse=True)
+    elif sort_by == "rating":
+        return sorted(candidates, key=lambda x: x["rating"], reverse=True)
+    else:
+        return sorted(candidates, key=score, reverse=True)
+
+
+# -----------------------------
+# Recommendation Engine (Hybrid)
+# -----------------------------
+def recommend_for_customer(customer_id, top_n=4):
+    conn = db()
+    events = conn.execute("""
+        SELECT customer_id, product_id, event_type, COUNT(*) AS c
+        FROM events
+        GROUP BY customer_id, product_id, event_type
+    """).fetchall()
+    products = [dict(p) for p in conn.execute("SELECT * FROM products").fetchall()]
+    owned = {r["product_id"] for r in events if r["customer_id"] == customer_id and r["event_type"] == "purchase"}
+    conn.close()
+
+    matrix = defaultdict(dict)
+    # Weight interactions: purchase=5, cart=3, view=1
+    weights = {"purchase": 5.0, "cart": 3.0, "view": 1.0}
+    for r in events:
+        w = weights.get(r["event_type"], 1.0)
+        matrix[r["customer_id"]][r["product_id"]] = matrix[r["customer_id"]].get(r["product_id"], 0) + (r["c"] * w)
+
+    def cosine(a, b):
+        keys = set(a) | set(b)
+        dot = sum(a.get(k, 0) * b.get(k, 0) for k in keys)
+        na = math.sqrt(sum(v * v for v in a.values()))
+        nb = math.sqrt(sum(v * v for v in b.values()))
+        return dot / (na * nb) if na and nb else 0
+
+    user_vec = matrix.get(customer_id, {})
+    if not user_vec:
+        # Fallback to top-rated best sellers
+        return sorted(products, key=lambda x: (x["rating"], x["review_count"]), reverse=True)[:top_n]
+
+    similarities = []
+    for uid, vec in matrix.items():
+        if uid != customer_id:
+            sim = cosine(user_vec, vec)
+            if sim > 0:
+                similarities.append((sim, uid))
+    similarities.sort(reverse=True)
+
+    scores = defaultdict(float)
+    for sim, uid in similarities[:10]:
+        for pid, val in matrix[uid].items():
+            if pid not in owned:
+                scores[pid] += sim * val
+
+    ranked_ids = [pid for pid, _ in sorted(scores.items(), key=lambda x: x[1], reverse=True)]
+    chosen = [p for p in products if p["id"] in ranked_ids]
+    if len(chosen) < top_n:
+        fillers = [p for p in products if p["id"] not in ranked_ids and p["id"] not in owned]
+        fillers.sort(key=lambda x: (x["rating"], x["review_count"]), reverse=True)
+        chosen += fillers
+
+    return chosen[:top_n]
+
+
+# -----------------------------
+# Cart & Dynamic Pricing Management
+# -----------------------------
+def get_cart():
+    return session.setdefault("cart", {})
+
+
+def cart_details():
+    cart = get_cart()
+    conn = db()
+    items = []
+    raw_subtotal = 0.0
+    for pid, qty in cart.items():
+        p = conn.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
+        if p:
+            line = p["price"] * int(qty)
+            orig_line = p["original_price"] * int(qty)
+            items.append({
+                "product": dict(p),
+                "quantity": int(qty),
+                "line_total": line,
+                "orig_line_total": orig_line,
+                "savings": orig_line - line
+            })
+            raw_subtotal += line
+    conn.close()
+
+    # Apply active coupon if stored in session
+    applied_coupon = session.get("coupon")
+    discount_amount = 0.0
+    if applied_coupon:
+        pct = applied_coupon.get("discount_pct", 0)
+        min_spend = applied_coupon.get("min_spend", 0)
+        if raw_subtotal >= min_spend:
+            discount_amount = round(raw_subtotal * (pct / 100.0), 2)
+        else:
+            session.pop("coupon", None)
+            applied_coupon = None
+
+    final_total = max(0.0, raw_subtotal - discount_amount)
+    delivery_fee = 0.0 if raw_subtotal >= 499 or raw_subtotal == 0 else 70.0
+
+    return {
+        "cart_items": items,
+        "items": items,
+        "raw_subtotal": round(raw_subtotal, 2),
+        "discount_amount": round(discount_amount, 2),
+        "delivery_fee": round(delivery_fee, 2),
+        "final_total": round(final_total + delivery_fee, 2),
+        "applied_coupon": applied_coupon,
+        "free_delivery_threshold_left": max(0.0, round(499.0 - raw_subtotal, 2))
+    }
+
+
+# -----------------------------
+# Global Context & Middleware
+# -----------------------------
+@app.context_processor
+def inject_globals():
+    cart_info = cart_details()
+    conn = db()
+    categories = [r["category"] for r in conn.execute("SELECT DISTINCT category FROM products ORDER BY category")]
+    
+    # Check current customer segment and offer
+    active_user_offer = None
+    user_segment = None
+    if session.get("customer_id"):
+        customer_analyses = compute_customer_rfm_and_segments(conn)
+        for ca in customer_analyses:
+            if ca["id"] == session["customer_id"]:
+                active_user_offer = ca["personalized_offer"]
+                user_segment = ca["segment"]
+                break
+
+    conn.close()
+
+    return {
+        "cart_count": sum(i["quantity"] for i in cart_info["items"]),
+        "cart_total": cart_info["final_total"],
+        "cart_info": cart_info,
+        "all_categories": categories,
+        "active_user_offer": active_user_offer,
+        "user_segment": user_segment,
+        "now_year": datetime.utcnow().year
+    }
+
+
+# -----------------------------
+# Main Application Routes
+# -----------------------------
+@app.route("/")
+def home():
+    query = request.args.get("q", "").strip()
+    category = request.args.get("category", "")
+    min_price = request.args.get("min_price")
+    max_price = request.args.get("max_price")
+    sort_by = request.args.get("sort", "featured")
+
+    products = search_products(
+        query=query,
+        category=category,
+        min_price=float(min_price) if min_price else None,
+        max_price=float(max_price) if max_price else None,
+        sort_by=sort_by
+    )
+
+    conn = db()
+    categories = [r["category"] for r in conn.execute("SELECT DISTINCT category FROM products ORDER BY category")]
+    best_sellers = conn.execute("SELECT * FROM products ORDER BY rating DESC, review_count DESC LIMIT 4").fetchall()
+    deals = conn.execute("SELECT * FROM products WHERE badge != '' ORDER BY price ASC LIMIT 4").fetchall()
+
+    recs = []
+    customer_profile = None
+    if session.get("customer_id"):
+        recs = recommend_for_customer(session["customer_id"], top_n=4)
+        all_rfm = compute_customer_rfm_and_segments(conn)
+        for p in all_rfm:
+            if p["id"] == session["customer_id"]:
+                customer_profile = p
+                break
+
+    conn.close()
+
+    return render_template(
+        "home.html",
+        products=products,
+        categories=categories,
+        best_sellers=best_sellers,
+        deals=deals,
+        recs=recs,
+        q=query,
+        selected_category=category,
+        sort_by=sort_by,
+        customer_profile=customer_profile
+    )
+
+
+@app.route("/product/<int:pid>")
+def product(pid):
+    conn = db()
+    p = conn.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
+    if not p:
+        conn.close()
+        flash("Product not found.", "error")
+        return redirect(url_for("home"))
+
+    # Log browsing telemetry
+    if session.get("customer_id"):
+        conn.execute("""
+            INSERT INTO events(customer_id, product_id, event_type, created_at)
+            VALUES(?,?,?,?)
+        """, (session["customer_id"], pid, "view", datetime.utcnow().isoformat()))
+        conn.commit()
+
+    # Get reviews
+    reviews = conn.execute("SELECT * FROM reviews WHERE product_id=? ORDER BY id DESC", (pid,)).fetchall()
+
+    # Market Basket: Frequently Bought Together
+    companion_product, bundle_rule = get_frequently_bought_together(pid, conn)
+
+    # Category related products
+    related = conn.execute("""
+        SELECT * FROM products WHERE category=? AND id != ? ORDER BY rating DESC LIMIT 4
+    """, (p["category"], pid)).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "product.html",
+        product=dict(p),
+        reviews=reviews,
+        companion_product=companion_product,
+        bundle_rule=bundle_rule,
+        related=related
+    )
+
+
+@app.post("/cart/add/<int:pid>")
+def add_cart(pid):
+    qty = max(1, int(request.form.get("quantity", 1)))
+    conn = db()
+    p = conn.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
+    if not p:
+        conn.close()
+        return redirect(url_for("home"))
+
+    cart = get_cart()
+    current = int(cart.get(str(pid), 0))
+    cart[str(pid)] = min(p["stock"], current + qty)
+    session.modified = True
+
+    # Record cart addition telemetry
+    if session.get("customer_id"):
+        conn.execute("""
+            INSERT INTO events(customer_id, product_id, event_type, created_at)
+            VALUES(?,?,?,?)
+        """, (session["customer_id"], pid, "cart", datetime.utcnow().isoformat()))
+        conn.commit()
+    conn.close()
+
+    flash(f"Added {p['name'][:35]}... to Cart.", "success")
+    return redirect(request.referrer or url_for("cart"))
+
+
+@app.post("/cart/add-bundle")
+def add_bundle():
+    p1_id = request.form.get("p1_id")
+    p2_id = request.form.get("p2_id")
+    if not p1_id or not p2_id:
+        return redirect(url_for("cart"))
+
+    conn = db()
+    p1 = conn.execute("SELECT * FROM products WHERE id=?", (p1_id,)).fetchone()
+    p2 = conn.execute("SELECT * FROM products WHERE id=?", (p2_id,)).fetchone()
+    conn.close()
+
+    if p1 and p2:
+        cart = get_cart()
+        cart[str(p1_id)] = int(cart.get(str(p1_id), 0)) + 1
+        cart[str(p2_id)] = int(cart.get(str(p2_id), 0)) + 1
+        session.modified = True
+
+        # Apply an automatic bundle discount coupon if not already applied
+        session["coupon"] = {
+            "code": "BUNDLE10",
+            "discount_pct": 10,
+            "title": "Combo Bundle 10% Savings",
+            "min_spend": 500
+        }
+        flash(f"Added '{p1['name'][:25]}...' and '{p2['name'][:25]}...' bundle with 10% combo savings!", "success")
+
+    return redirect(url_for("cart"))
+
+
+@app.post("/cart/update")
+def update_cart():
+    cart = get_cart()
+    conn = db()
+    for pid, qty in request.form.items():
+        if pid.isdigit():
+            try:
+                q = int(qty)
+            except:
+                q = 1
+            if q <= 0:
+                cart.pop(pid, None)
+            else:
+                p = conn.execute("SELECT stock FROM products WHERE id=?", (int(pid),)).fetchone()
+                if p:
+                    cart[pid] = min(q, p["stock"])
+    conn.close()
+    session.modified = True
+    flash("Cart updated.", "info")
+    return redirect(url_for("cart"))
+
+
+@app.get("/cart/remove/<int:pid>")
+def remove_cart_item(pid):
+    cart = get_cart()
+    cart.pop(str(pid), None)
+    session.modified = True
+    flash("Item removed from cart.", "info")
+    return redirect(url_for("cart"))
+
+
+@app.get("/cart")
+def cart():
+    cart_info = cart_details()
+    conn = db()
+    
+    # Get smart personalized coupons recommendation for the user
+    suggested_coupons = [
+        {"code": "WELCOME10", "discount_pct": 10, "min_spend": 500, "title": "10% Welcome Discount"},
+        {"code": "AMAZONFEST15", "discount_pct": 15, "min_spend": 2000, "title": "Mega Tech Fest 15% Off"}
+    ]
+    if session.get("customer_id"):
+        customer_analyses = compute_customer_rfm_and_segments(conn)
+        for ca in customer_analyses:
+            if ca["id"] == session["customer_id"]:
+                po = ca["personalized_offer"]
+                suggested_coupons.insert(0, {
+                    "code": po["code"],
+                    "discount_pct": po["discount_pct"],
+                    "min_spend": po["min_spend"],
+                    "title": po["title"],
+                    "badge": po["badge"]
+                })
+                break
+    conn.close()
+
+    return render_template("cart.html", cart_info=cart_info, suggested_coupons=suggested_coupons)
+
+
+@app.post("/coupon/apply")
+def apply_coupon():
+    code = request.form.get("coupon_code", "").strip().upper()
+    cart_info = cart_details()
+    raw_sub = cart_info["raw_subtotal"]
+
+    # Known dynamic coupons mapping
+    coupon_registry = {
+        "VIPEXCLUSIV20": {"discount_pct": 20, "min_spend": 2000, "title": "VIP Exclusive 20% Privilege"},
+        "COMEBACK25": {"discount_pct": 25, "min_spend": 1000, "title": "Win-Back 25% Retention Discount"},
+        "BUNDLE10": {"discount_pct": 10, "min_spend": 500, "title": "Frequently Bought Together 10% Off"},
+        "WELCOME10": {"discount_pct": 10, "min_spend": 500, "title": "10% New Shopper Welcome"},
+        "AMAZONFEST15": {"discount_pct": 15, "min_spend": 2000, "title": "Tech Fest 15% Off"},
+        "UPGRADE15": {"discount_pct": 15, "min_spend": 1200, "title": "15% Fast-Track VIP Upgrade"}
+    }
+
+    # Match category coupons like LOYALCOMP15, SPECIALAUDI12
+    if code.startswith("LOYAL"):
+        coupon_registry[code] = {"discount_pct": 15, "min_spend": 1500, "title": "15% Category Loyalty Reward"}
+    elif code.startswith("SPECIAL"):
+        coupon_registry[code] = {"discount_pct": 12, "min_spend": 1000, "title": "12% Category Personal Pick"}
+
+    if code in coupon_registry:
+        c_data = coupon_registry[code]
+        if raw_sub < c_data["min_spend"]:
+            flash(f"Coupon '{code}' requires a minimum cart total of ₹{c_data['min_spend']:.0f}.", "error")
+        else:
+            session["coupon"] = {
+                "code": code,
+                "discount_pct": c_data["discount_pct"],
+                "min_spend": c_data["min_spend"],
+                "title": c_data["title"]
+            }
+            flash(f"Coupon '{code}' applied successfully! Saved {c_data['discount_pct']}%", "success")
+    else:
+        flash(f"Invalid promo code '{code}'.", "error")
+
+    return redirect(url_for("cart"))
+
+
+@app.get("/coupon/remove")
+def remove_coupon():
+    session.pop("coupon", None)
+    flash("Coupon removed.", "info")
+    return redirect(url_for("cart"))
+
+
+@app.route("/checkout", methods=["GET", "POST"])
+def checkout():
+    if not session.get("customer_id"):
+        flash("Please log in to proceed to checkout.", "error")
+        return redirect(url_for("login", next=url_for("checkout")))
+
+    cart_info = cart_details()
+    if not cart_info["items"]:
+        flash("Your cart is empty.", "error")
+        return redirect(url_for("cart"))
+
+    conn = db()
+    customer = conn.execute("SELECT * FROM customers WHERE id=?", (session["customer_id"],)).fetchone()
+    conn.close()
+
+    if request.method == "POST":
+        address = request.form.get("address", customer["address"] if customer else "").strip()
+        pincode = request.form.get("pincode", "392001").strip()
+        method = request.form.get("method", "Amazon Pay UPI")
+        token = "tok_" + uuid.uuid4().hex[:18]
+
+        conn = db()
+        try:
+            conn.execute("BEGIN")
+            # Stock verification
+            for item in cart_info["items"]:
+                curr = conn.execute("SELECT stock, name FROM products WHERE id=?", (item["product"]["id"],)).fetchone()
+                if not curr or curr["stock"] < item["quantity"]:
+                    raise ValueError(f"Insufficient stock for '{curr['name'] if curr else 'Item'}'.")
+
+            # Deduct stock
+            for item in cart_info["items"]:
+                conn.execute("UPDATE products SET stock=stock-? WHERE id=?", (item["quantity"], item["product"]["id"]))
+
+            # Update customer address
+            conn.execute("UPDATE customers SET address=?, pincode=? WHERE id=?", (address, pincode, session["customer_id"]))
+
+            now = datetime.utcnow().isoformat()
+            tracking_id = "TRK-" + uuid.uuid4().hex[:10].upper()
+            cur = conn.execute("""
+                INSERT INTO orders(customer_id, status, total, discount_amount, coupon_code, payment_status, tracking_id, created_at)
+                VALUES(?,?,?,?,?,?,?,?)
+            """, (
+                session["customer_id"],
+                "Confirmed",
+                cart_info["final_total"],
+                cart_info["discount_amount"],
+                session.get("coupon", {}).get("code", ""),
+                "Paid",
+                tracking_id,
+                now
+            ))
+            oid = cur.lastrowid
+
+            # Insert order items and telemetry
+            for item in cart_info["items"]:
+                conn.execute("""
+                    INSERT INTO order_items(order_id, product_id, quantity, price)
+                    VALUES(?,?,?,?)
+                """, (oid, item["product"]["id"], item["quantity"], item["product"]["price"]))
+                conn.execute("""
+                    INSERT INTO events(customer_id, product_id, event_type, created_at)
+                    VALUES(?,?,?,?)
+                """, (session["customer_id"], item["product"]["id"], "purchase", now))
+
+            # Record tokenized payment
+            conn.execute("""
+                INSERT INTO payments(order_id, method, txn_status, token)
+                VALUES(?,?,?,?)
+            """, (oid, method, "Success", token))
+
+            conn.commit()
+
+            # Clear session cart and coupon
+            session["cart"] = {}
+            session.pop("coupon", None)
+            session.modified = True
+
+            flash("Order placed successfully with Amazon 1-Click checkout!", "success")
+            return redirect(url_for("order_success", oid=oid))
+        except Exception as e:
+            conn.rollback()
+            flash(str(e), "error")
+        finally:
+            conn.close()
+
+    return render_template("checkout.html", cart_info=cart_info, customer=customer)
+
+
+@app.get("/order/success/<int:oid>")
+def order_success(oid):
+    conn = db()
+    order = conn.execute("SELECT * FROM orders WHERE id=?", (oid,)).fetchone()
+    if not order:
+        conn.close()
+        return redirect(url_for("home"))
+
+    items = conn.execute("""
+        SELECT oi.*, p.name as product_name, p.category, p.image_url
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = ?
+    """, (oid,)).fetchall()
+    payment = conn.execute("SELECT * FROM payments WHERE order_id=?", (oid,)).fetchone()
+    conn.close()
+
+    return render_template("success.html", order=order, items=items, payment=payment)
+
+
+@app.get("/orders")
+def orders():
+    if not session.get("customer_id"):
+        return redirect(url_for("login"))
+    conn = db()
+    user_orders = conn.execute("""
+        SELECT * FROM orders WHERE customer_id=? ORDER BY id DESC
+    """, (session["customer_id"],)).fetchall()
+
+    orders_with_items = []
+    for o in user_orders:
+        items = conn.execute("""
+            SELECT oi.*, p.name as product_name, p.category, p.image_url
+            FROM order_items oi
+            JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = ?
+        """, (o["id"],)).fetchall()
+        orders_with_items.append({"order": o, "items": items})
+
+    conn.close()
+    return render_template("orders.html", orders_with_items=orders_with_items)
+
+
+@app.get("/offers")
+def offers():
+    """
+    Dedicated user page displaying personalized rewards, category discounts,
+    and loyalty benefits computed by the Python Analytics Engine.
+    """
+    conn = db()
+    customer_analysis = compute_customer_rfm_and_segments(conn)
+    current_customer = None
+    if session.get("customer_id"):
+        for ca in customer_analysis:
+            if ca["id"] == session["customer_id"]:
+                current_customer = ca
+                break
+
+    # General available offers
+    general_offers = [
+        {
+            "code": "AMAZONFEST15",
+            "discount_pct": 15,
+            "title": "Mega Electronics Fest Discount",
+            "description": "Flat 15% off on high performance laptops, audio, and gaming peripherals.",
+            "min_spend": 2000,
+            "badge": "Sitewide Deal"
+        },
+        {
+            "code": "BUNDLE10",
+            "discount_pct": 10,
+            "title": "Frequently Bought Together Combo Perk",
+            "description": "Save 10% instantly when ordering 2 or more complementary tech accessories.",
+            "min_spend": 500,
+            "badge": "Bundle Savings"
+        }
+    ]
+
+    # Category recommendations
+    category_deals = conn.execute("""
+        SELECT * FROM products WHERE badge != '' ORDER BY price DESC LIMIT 6
+    """).fetchall()
+    conn.close()
+
+    return render_template(
+        "offers.html",
+        customer=current_customer,
+        general_offers=general_offers,
+        category_deals=category_deals
+    )
+
+
+# -----------------------------
+# Analytics & BI Dashboard
+# -----------------------------
+@app.get("/analytics")
+def analytics():
+    """
+    Executive Business Intelligence & Data Science Dashboard.
+    Provides RFM customer segmentation, churn scoring, market basket lift metrics,
+    and interactive visualizations.
+    """
+    conn = db()
+    data = get_executive_bi_dashboard_data(conn)
+    conn.close()
+
+    return render_template(
+        "analytics.html",
+        kpis=data["kpis"],
+        customer_analysis=data["customer_analysis"],
+        market_basket_rules=data["market_basket_rules"],
+        charts=data["charts"]
+    )
+
+
+@app.get("/api/analytics/charts")
+def api_analytics_charts():
+    """JSON API for interactive Chart.js graphs and dynamic filter updates."""
+    conn = db()
+    data = get_executive_bi_dashboard_data(conn)
+    conn.close()
+    return jsonify(data["charts"])
+
+
+@app.get("/api/analytics/live-events")
+def api_analytics_live_events():
+    """JSON API streaming the latest 15 real-time customer behavioral events."""
+    conn = db()
+    events = conn.execute("""
+        SELECT e.id, e.event_type, e.created_at, e.customer_id,
+               COALESCE(c.name, 'Guest Shopper') as customer_name,
+               COALESCE(p.name, 'General Browsing') as product_name,
+               COALESCE(p.category, '') as category
+        FROM events e
+        LEFT JOIN customers c ON e.customer_id = c.id
+        LEFT JOIN products p ON e.product_id = p.id
+        ORDER BY e.id DESC
+        LIMIT 15
+    """).fetchall()
+    conn.close()
+    return jsonify([dict(ev) for ev in events])
+
+
+@app.post("/admin/reset-realtime-data")
+def admin_reset_data():
+    """Clears all customer orders, carts, and telemetry to start fresh."""
+    conn = db()
+    conn.execute("DELETE FROM orders")
+    conn.execute("DELETE FROM order_items")
+    conn.execute("DELETE FROM payments")
+    conn.execute("DELETE FROM events")
+    conn.execute("DELETE FROM customers")
+    conn.commit()
+    conn.close()
+    session.clear()
+    flash("Database reset! Real-time analytics is now clean and awaiting real user traffic.", "info")
+    return redirect(url_for("analytics"))
+
+
+@app.get("/api/customer/<int:cid>/profile")
+def api_customer_profile(cid):
+    """Returns detailed customer profile and recommended retention strategy."""
+    conn = db()
+    customer_analysis = compute_customer_rfm_and_segments(conn)
+    conn.close()
+    for c in customer_analysis:
+        if c["id"] == cid:
+            return jsonify({"status": "success", "customer": c})
+    return jsonify({"status": "error", "message": "Customer not found"}), 404
+
+
+# -----------------------------
+# Authentication & Registration
+# -----------------------------
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = request.form["email"].strip().lower()
+        password = request.form["password"]
+        conn = db()
+        user = conn.execute("SELECT * FROM customers WHERE email=?", (email,)).fetchone()
+        
+        if user and check_password_hash(user["password_hash"], password):
+            session["customer_id"] = user["id"]
+            session["customer_name"] = user["name"]
+            
+            # Record login event telemetry
+            conn.execute("""
+                INSERT INTO events(customer_id, product_id, event_type, created_at)
+                VALUES(?,?,?,?)
+            """, (user["id"], None, "login", datetime.utcnow().isoformat()))
+            conn.commit()
+            conn.close()
+
+            flash(f"Welcome back, {user['name'].split()[0]}!", "success")
+            next_url = request.args.get("next")
+            return redirect(next_url or url_for("home"))
+        
+        conn.close()
+        flash("Invalid email or password. Please register if you do not have an account.", "error")
+
+    return render_template("auth.html", mode="login")
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        name = request.form["name"].strip()
+        email = request.form["email"].strip().lower()
+        password = request.form["password"]
+        address = request.form.get("address", "").strip()
+        pincode = request.form.get("pincode", "392001").strip()
+
+        conn = db()
+        try:
+            now_iso = datetime.utcnow().isoformat()
+            cur = conn.execute("""
+                INSERT INTO customers(name, email, password_hash, address, pincode, created_at)
+                VALUES(?,?,?,?,?,?)
+            """, (name, email, generate_password_hash(password), address, pincode, now_iso))
+            cid = cur.lastrowid
+
+            # Record registration event telemetry
+            conn.execute("""
+                INSERT INTO events(customer_id, product_id, event_type, created_at)
+                VALUES(?,?,?,?)
+            """, (cid, None, "register", now_iso))
+            
+            conn.commit()
+            
+            session["customer_id"] = cid
+            session["customer_name"] = name
+            flash(f"Account created for {name}! Your real-time customer analytics profile is now active.", "success")
+            return redirect(url_for("home"))
+        except sqlite3.IntegrityError:
+            flash("An account with this email already exists.", "error")
+        finally:
+            conn.close()
+
+    return render_template("auth.html", mode="register")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("You have been signed out.", "info")
+    return redirect(url_for("home"))
+
+
+if __name__ == "__main__":
+    # Binding to 0.0.0.0 allows any device on the same local network / Wi-Fi to access the application
+    app.run(debug=True, host="0.0.0.0", port=5000)

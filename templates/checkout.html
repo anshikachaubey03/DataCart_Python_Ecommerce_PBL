@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout — DataCart{% endblock %}
+
+{% block content %}
+
+<div style="max-width:900px; margin:0 auto;">
+  
+  <h1 style="font-size:26px; font-weight:700; margin-bottom:20px; border-bottom:1px solid var(--amz-border-subtle); padding-bottom:12px;">
+    Checkout ({{ cart_count }} items)
+  </h1>
+
+  <form method="post" action="{{ url_for('checkout') }}">
+    
+    <!-- Step 1: Delivery Address -->
+    <div class="section-box" style="margin-bottom:18px;">
+      <h3 style="font-size:17px; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+        <span style="background:var(--amz-subnav); color:#fff; width:24px; height:24px; border-radius:50%; display:grid; place-items:center; font-size:12px;">1</span>
+        Select a Delivery Address
+      </h3>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+        <div>
+          <label style="font-size:12px; font-weight:700; color:var(--amz-muted); display:block; margin-bottom:4px;">Full Name</label>
+          <input type="text" class="dark-input" style="background:#fff; color:#111; border:1px solid #ccc; width:100%;" value="{{ customer.name if customer else '' }}" readonly>
+        </div>
+
+        <div>
+          <label style="font-size:12px; font-weight:700; color:var(--amz-muted); display:block; margin-bottom:4px;">Pincode</label>
+          <input type="text" name="pincode" class="dark-input" style="background:#fff; color:#111; border:1px solid #ccc; width:100%;" value="{{ customer.pincode if customer else '392001' }}" required>
+        </div>
+
+        <div style="grid-column: 1 / -1;">
+          <label style="font-size:12px; font-weight:700; color:var(--amz-muted); display:block; margin-bottom:4px;">Street Address & Landmark</label>
+          <input type="text" name="address" class="dark-input" style="background:#fff; color:#111; border:1px solid #ccc; width:100%;" value="{{ customer.address if customer else 'Near Station Road, Bharuch, Gujarat' }}" required>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Payment Method Selection -->
+    <div class="section-box" style="margin-bottom:18px;">
+      <h3 style="font-size:17px; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+        <span style="background:var(--amz-subnav); color:#fff; width:24px; height:24px; border-radius:50%; display:grid; place-items:center; font-size:12px;">2</span>
+        Payment Method
+      </h3>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <label style="display:flex; align-items:center; gap:10px; padding:10px; border:1px solid #d5d9d9; border-radius:6px; background:#fbfbfb; cursor:pointer;">
+          <input type="radio" name="method" value="Amazon Pay UPI" checked>
+          <div>
+            <strong style="font-size:14px;">Amazon Pay UPI (Instant & Secure)</strong>
+            <div style="font-size:11px; color:var(--amz-muted);">Fast checkout with zero transaction fees & instant verification</div>
+          </div>
+        </label>
+
+        <label style="display:flex; align-items:center; gap:10px; padding:10px; border:1px solid #d5d9d9; border-radius:6px; background:#fbfbfb; cursor:pointer;">
+          <input type="radio" name="method" value="Credit / Debit Card">
+          <div>
+            <strong style="font-size:14px;">Credit / Debit Card</strong>
+            <div style="font-size:11px; color:var(--amz-muted);">Visa, MasterCard, RuPay, American Express (Tokenized)</div>
+          </div>
+        </label>
+
+        <label style="display:flex; align-items:center; gap:10px; padding:10px; border:1px solid #d5d9d9; border-radius:6px; background:#fbfbfb; cursor:pointer;">
+          <input type="radio" name="method" value="Cash on Delivery">
+          <div>
+            <strong style="font-size:14px;">Cash on Delivery (COD)</strong>
+            <div style="font-size:11px; color:var(--amz-muted);">Pay cash/UPI at doorstep upon delivery</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Step 3: Review Items & Place Order -->
+    <div class="section-box">
+      <h3 style="font-size:17px; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+        <span style="background:var(--amz-subnav); color:#fff; width:24px; height:24px; border-radius:50%; display:grid; place-items:center; font-size:12px;">3</span>
+        Review Items & Order Total
+      </h3>
+
+      <div style="margin-bottom:16px;">
+        {% for item in cart_info.cart_items %}
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee; font-size:13px;">
+            <span>{{ item.quantity }}x {{ item.product.name }}</span>
+            <strong>₹{{"{:,.0f}".format(item.line_total)}}</strong>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div style="background:#fafafa; border:1px solid #eee; padding:16px; border-radius:6px; margin-bottom:18px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:14px;">
+          <span>Items subtotal:</span>
+          <span>₹{{"{:,.0f}".format(cart_info.raw_subtotal)}}</span>
+        </div>
+        {% if cart_info.discount_amount > 0 %}
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px; color:#16a34a; font-weight:700; font-size:14px;">
+            <span>Coupon Discount ({{ cart_info.applied_coupon.code }}):</span>
+            <span>-₹{{"{:,.0f}".format(cart_info.discount_amount)}}</span>
+          </div>
+        {% endif %}
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:14px;">
+          <span>Delivery Fee:</span>
+          <span>{% if cart_info.delivery_fee == 0 %}FREE{% else %}₹{{ cart_info.delivery_fee }}{% endif %}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:20px; font-weight:800; border-top:1px solid #ddd; padding-top:10px; margin-top:10px;">
+          <span>Order Total:</span>
+          <span style="color:var(--amz-text);">₹{{"{:,.0f}".format(cart_info.final_total)}}</span>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-amz-buy" style="font-size:16px; padding:12px 24px;">
+        Place Your Order and Pay (Demo 1-Click)
+      </button>
+
+      <p style="font-size:11px; color:var(--amz-muted); margin-top:10px;">
+        By placing your order, you agree to DataCart's Conditions of Use and Privacy Notice. Payments use demo tokenization.
+      </p>
+    </div>
+
+  </form>
+
+</div>
+
+{% endblock %}

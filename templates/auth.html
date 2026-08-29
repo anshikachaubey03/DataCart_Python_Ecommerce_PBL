@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}{% if mode == 'register' %}Create Account{% else %}Sign-In{% endif %} — DataCart{% endblock %}
+
+{% block content %}
+
+<div style="max-width:440px; margin:30px auto;">
+  
+  <div class="section-box" style="padding:28px;">
+    
+    <h1 style="font-size:24px; font-weight:700; margin-bottom:18px;">
+      {% if mode == 'register' %}Create Account{% else %}Sign-In{% endif %}
+    </h1>
+
+    <form method="post" action="{% if mode == 'register' %}{{ url_for('register') }}{% else %}{{ url_for('login', next=request.args.get('next')) }}{% endif %}">
+      
+      {% if mode == 'register' %}
+        <div style="margin-bottom:14px;">
+          <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">Your name</label>
+          <input type="text" name="name" class="dark-input" style="background:#fff; color:#111; border:1px solid #888; width:100%;" placeholder="First and last name" required>
+        </div>
+      {% endif %}
+
+      <div style="margin-bottom:14px;">
+        <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">Email</label>
+        <input type="email" name="email" class="dark-input" style="background:#fff; color:#111; border:1px solid #888; width:100%;" placeholder="user@example.com" required>
+      </div>
+
+      <div style="margin-bottom:18px;">
+        <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">Password</label>
+        <input type="password" name="password" class="dark-input" style="background:#fff; color:#111; border:1px solid #888; width:100%;" placeholder="At least 6 characters" required>
+      </div>
+
+      {% if mode == 'register' %}
+        <div style="margin-bottom:14px;">
+          <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">Delivery Address</label>
+          <input type="text" name="address" class="dark-input" style="background:#fff; color:#111; border:1px solid #888; width:100%;" placeholder="Street, City, State">
+        </div>
+      {% endif %}
+
+      <button type="submit" class="btn-amz-buy" style="margin-bottom:16px;">
+        {% if mode == 'register' %}Create your DataCart account{% else %}Continue{% endif %}
+      </button>
+
+      <div style="font-size:12px; color:var(--amz-muted); line-height:1.5; margin-bottom:16px;">
+        By continuing, you agree to DataCart's Conditions of Use and Privacy Notice.
+      </div>
+
+      <div style="border-top:1px solid var(--amz-border-subtle); padding-top:14px; text-align:center; font-size:13px;">
+        {% if mode == 'register' %}
+          Already have an account? <a href="{{ url_for('login') }}" style="font-weight:700;">Sign in →</a>
+        {% else %}
+          New to DataCart? <a href="{{ url_for('register') }}" style="font-weight:700;">Create your account →</a>
+        {% endif %}
+      </div>
+
+    </form>
+
+  </div>
+
+  <!-- Real-Time Customer Analytics Note -->
+  <div class="section-box" style="margin-top:20px; background:#f8fafc; border:1px dashed #3b82f6; padding:20px;">
+    <h3 style="font-size:14px; font-weight:800; color:var(--amz-text); margin-bottom:6px;">
+      🔴 Live Real-Time Analytics Active
+    </h3>
+    <p style="font-size:12px; color:var(--amz-muted); line-height:1.6;">
+      Create an account with your own name or log in. Every product you browse, add to cart, or purchase 
+      is tracked dynamically in real-time, instantly calculating your <strong>Priority Score</strong>, 
+      <strong>RFM Segment</strong>, and <strong>Personalized Retention Discounts</strong>!
+    </p>
+  </div>
+
+</div>
+
+{% endblock %}
