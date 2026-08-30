@@ -248,146 +248,201 @@ def init_db():
         ))
         conn.commit()
 
-    # Seed rich products catalog if empty or upgrade if needed
-    count = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
-    if count < 15:
-        # Clear old minimal products and re-seed with rich Amazon-grade catalog
+    # Seed Verified Local Merchants
+    merchant_count = conn.execute("SELECT COUNT(*) FROM customers WHERE role='merchant'").fetchone()[0]
+    if merchant_count < 4:
+        merchants = [
+            (
+                "Harsh Patel", "harsh.apex@example.com", generate_password_hash("seller123"), "merchant",
+                "Apex Electronics & Computers", "GSTIN24AABCA1234F1Z1", "Bharuch", "919876543210",
+                "Shop 12, Station Road Commercial Complex, Bharuch", "392001", datetime.utcnow().isoformat()
+            ),
+            (
+                "Meera Shah", "meera.sound@example.com", generate_password_hash("seller123"), "merchant",
+                "SoundWave Studio & Acoustics", "GSTIN24AABCS5678G1Z2", "Vadodara", "919876543211",
+                "Alkapuri Arcade, RC Dutt Road, Vadodara", "390007", datetime.utcnow().isoformat()
+            ),
+            (
+                "Karan Desai", "karan.gaming@example.com", generate_password_hash("seller123"), "merchant",
+                "Gamers Heaven & Esports Store", "GSTIN24AABCG9101H1Z3", "Surat", "919876543212",
+                "Ring Road Tech Hub, Surat", "395002", datetime.utcnow().isoformat()
+            ),
+            (
+                "Pooja Mehta", "pooja.istore@example.com", generate_password_hash("seller123"), "merchant",
+                "iStore Express Premium Retail", "GSTIN24AABCI3141J1Z4", "Bharuch", "919876543213",
+                "Link Road, Near Zadeshwar, Bharuch", "392011", datetime.utcnow().isoformat()
+            ),
+            (
+                "Anil Sharma", "anil.smart@example.com", generate_password_hash("seller123"), "merchant",
+                "Smart Living Solutions", "GSTIN24AABCS5161K1Z5", "Ahmedabad", "919876543214",
+                "SG Highway Commercial Tower, Ahmedabad", "380054", datetime.utcnow().isoformat()
+            )
+        ]
+        for m in merchants:
+            conn.execute("""
+                INSERT OR IGNORE INTO customers(name, email, password_hash, role, store_name, business_id, city, whatsapp, address, pincode, created_at)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)
+            """, m)
+        conn.commit()
+
+    # Fetch seeded merchant IDs
+    apex_m = conn.execute("SELECT id FROM customers WHERE store_name='Apex Electronics & Computers'").fetchone()
+    apex_id = apex_m["id"] if apex_m else 1
+    sound_m = conn.execute("SELECT id FROM customers WHERE store_name='SoundWave Studio & Acoustics'").fetchone()
+    sound_id = sound_m["id"] if sound_m else 1
+    gamer_m = conn.execute("SELECT id FROM customers WHERE store_name='Gamers Heaven & Esports Store'").fetchone()
+    gamer_id = gamer_m["id"] if gamer_m else 1
+    istore_m = conn.execute("SELECT id FROM customers WHERE store_name='iStore Express Premium Retail'").fetchone()
+    istore_id = istore_m["id"] if istore_m else 1
+    smart_m = conn.execute("SELECT id FROM customers WHERE store_name='Smart Living Solutions'").fetchone()
+    smart_id = smart_m["id"] if smart_m else 1
+
+    # Check if catalog needs professional refresh
+    old_books = conn.execute("SELECT COUNT(*) FROM products WHERE category='Books'").fetchone()[0]
+    total_prods = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
+
+    if total_prods < 15 or old_books > 0:
         conn.execute("DELETE FROM products")
         products = [
             (
-                "Apple MacBook Air M2 (13.6-inch, 8GB RAM, 256GB SSD)",
-                "Strikingly thin design with fast M2 chip, 13.6-inch Liquid Retina display, 18-hour battery life, 1080p FaceTime HD camera, and MagSafe charging.",
-                89990.0, 114900.0, 15, "Computers", 4.8, 1842,
-                "Amazon's Choice",
+                "Apple MacBook Air M3 (13.6-inch, 8-Core CPU, 512GB SSD, Space Gray)",
+                "Strikingly thin and fast with next-gen Apple M3 chip. Features 13.6-inch Liquid Retina display, 18-hour battery life, 1080p FaceTime HD camera, MagSafe 3 charging, and dual external display support.",
+                104900.0, 119900.0, 12, "Computers", 4.9, 2140, "Top Rated",
                 "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&auto=format&fit=crop&q=80",
-                "laptop apple macbook air m2 computer thin light display"
+                "laptop apple macbook air m3 computer thin light space gray",
+                apex_id, "Apex Electronics & Computers", "Bharuch", "Station Road Commercial Complex, Bharuch", "919876543210"
             ),
             (
-                "Sony WH-1000XM5 Wireless Noise-Cancelling Headphones",
-                "Industry-leading noise cancellation with two processors and 8 microphones. Ultra-comfortable lightweight design, crystal clear hands-free calling, 30-hour battery life.",
-                26990.0, 34990.0, 28, "Audio", 4.7, 3120,
-                "#1 Best Seller",
+                "Dell XPS 13 Plus Ultrabook (Intel Core i7 13th Gen, 16GB RAM, 1TB SSD, 3.5K OLED)",
+                "Futuristic minimalist design with zero-lattice keyboard, capacitive touch function row, seamless glass haptic touchpad, and brilliant 3.5K OLED infinity edge display.",
+                134990.0, 159990.0, 8, "Computers", 4.7, 860, "Premium Choice",
+                "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=500&auto=format&fit=crop&q=80",
+                "laptop dell xps 13 ultrabook windows oled touch premium",
+                apex_id, "Apex Electronics & Computers", "Bharuch", "Station Road Commercial Complex, Bharuch", "919876543210"
+            ),
+            (
+                "ASUS ROG Zephyrus G14 Gaming Laptop (Ryzen 9 8945HS, RTX 4070, 32GB RAM, 165Hz QHD OLED)",
+                "Ultraportable AI-ready gaming laptop crafted from CNC-machined aluminium with Slash Lighting. ROG Nebula Display with 100% DCI-P3 and NVIDIA G-Sync.",
+                159990.0, 189990.0, 6, "Gaming", 4.8, 1420, "Flagship Deal",
+                "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=500&auto=format&fit=crop&q=80",
+                "gaming laptop asus rog zephyrus rtx 4070 oled ryzen 9",
+                gamer_id, "Gamers Heaven & Esports Store", "Surat", "Ring Road Tech Hub, Surat", "919876543212"
+            ),
+            (
+                "Apple iPhone 15 Pro Max (256GB, Natural Titanium)",
+                "Forged in titanium with aerospace-grade strength. Powered by game-changing A17 Pro chip, customizable Action button, and the most versatile 5x Optical Telephoto iPhone camera system.",
+                139900.0, 159900.0, 15, "Computers", 4.9, 4520, "Best Seller",
+                "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=500&auto=format&fit=crop&q=80",
+                "iphone apple 15 pro max titanium camera flagship smartphone",
+                istore_id, "iStore Express Premium Retail", "Bharuch", "Link Road, Near Zadeshwar, Bharuch", "919876543213"
+            ),
+            (
+                "Samsung Galaxy S24 Ultra 5G (512GB, Titanium Gray with Galaxy AI & S-Pen)",
+                "Unleash new levels of creativity and productivity with Galaxy AI. Features 200MP Quad Tele camera, Snapdragon 8 Gen 3 for Galaxy, titanium shield, and built-in S-Pen.",
+                129999.0, 144999.0, 10, "Computers", 4.8, 3180, "Hot Release",
+                "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=500&auto=format&fit=crop&q=80",
+                "samsung galaxy s24 ultra smartphone galaxy ai spen 5g android",
+                apex_id, "Apex Electronics & Computers", "Bharuch", "Station Road Commercial Complex, Bharuch", "919876543210"
+            ),
+            (
+                "Sony WH-1000XM5 Wireless Active Noise-Cancelling Headphones",
+                "Industry-leading noise cancellation powered by two processors and 8 microphones. Ultra-comfortable lightweight design, crystal clear hands-free calling, 30-hour battery life, and LDAC High-Res Audio.",
+                26990.0, 34990.0, 24, "Audio", 4.8, 3890, "Audiophile Choice",
                 "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=80",
-                "headphones sony wireless noise cancelling audio bluetooth premium"
+                "sony headphones wh1000xm5 wireless anc bluetooth audio ldac",
+                sound_id, "SoundWave Studio & Acoustics", "Vadodara", "Alkapuri Arcade, RC Dutt Road, Vadodara", "919876543211"
             ),
             (
-                "Keychron K2 V2 Wireless Mechanical Keyboard (RGB Backlit)",
-                "Compact 75% layout wireless/wired mechanical keyboard with Gateron G Pro Brown switches, Mac/Windows compatibility, and 4000mAh battery.",
-                7499.0, 9999.0, 32, "Computers", 4.6, 940,
-                "Limited Time Deal",
-                "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&auto=format&fit=crop&q=80",
-                "keyboard mechanical keychron rgb wireless gaming coding typist"
+                "Bose QuietComfort Ultra Wireless Earbuds with Spatial Audio",
+                "Revolutionary spatial audio for immersive listening, world-class noise cancellation, CustomTune sound calibration tailored to your ears, and IPX4 sweat resistance.",
+                23900.0, 29900.0, 18, "Audio", 4.7, 1850, "Top Rated",
+                "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&auto=format&fit=crop&q=80",
+                "bose earbuds quietcomfort ultra wireless anc spatial audio bluetooth",
+                sound_id, "SoundWave Studio & Acoustics", "Vadodara", "Alkapuri Arcade, RC Dutt Road, Vadodara", "919876543211"
             ),
             (
-                "Logitech MX Master 3S Wireless Performance Mouse",
-                "Quiet Clicks 8K DPI any-surface tracking, ergonomic design, MagSpeed electromagnetic scrolling, USB-C quick charging, cross-computer control.",
-                8495.0, 10995.0, 45, "Accessories", 4.8, 2750,
-                "Amazon's Choice",
+                "Marshall Stanmore III Bluetooth Home Audio Speaker (Black & Brass)",
+                "Legendary Marshall room-filling sound with re-engineered wider soundstage, angled tweeters, updated waveguides, Bluetooth 5.2, and 3.5mm AUX input.",
+                31999.0, 39999.0, 14, "Audio", 4.8, 2210, "Vintage Classic",
+                "https://images.unsplash.com/photo-1545454675-3531b543be5d?w=500&auto=format&fit=crop&q=80",
+                "marshall speaker stanmore bluetooth audio wireless bass home",
+                sound_id, "SoundWave Studio & Acoustics", "Vadodara", "Alkapuri Arcade, RC Dutt Road, Vadodara", "919876543211"
+            ),
+            (
+                "Logitech MX Master 3S Wireless Laser Mouse (Quiet Clicks, 8K DPI)",
+                "Ergonomic mastery with 8000 DPI sensor capable of tracking on glass. Features MagSpeed electromagnetic scroll wheel, USB-C quick charge, and cross-device flow.",
+                8495.0, 10995.0, 35, "Accessories", 4.9, 5820, "Workplace Pro",
                 "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=500&auto=format&fit=crop&q=80",
-                "mouse logitech mx master wireless bluetooth ergonomic productivity"
+                "mouse logitech mx master wireless laser productivity ergonomic",
+                apex_id, "Apex Electronics & Computers", "Bharuch", "Station Road Commercial Complex, Bharuch", "919876543210"
             ),
             (
-                "Samsung 28-inch 4K UHD IPS Monitor (3840 x 2160, HDR10)",
-                "Frameless 4K IPS display with 1 billion colors, AMD FreeSync, dual HDMI and DisplayPort, eye saver mode, and tilt adjustable stand.",
-                22999.0, 31500.0, 18, "Computers", 4.6, 1420,
-                "Prime Deal",
+                "Keychron Q1 Pro Custom Wireless Mechanical Keyboard (CNC Aluminum)",
+                "Full CNC aluminum body, QMK/VIA wireless programmable, double-gasket acoustic design, hot-swappable Keychron K Pro Mechanical switches, and RGB backlighting.",
+                14999.0, 18999.0, 15, "Accessories", 4.8, 1120, "Enthusiast Choice",
+                "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&auto=format&fit=crop&q=80",
+                "keyboard mechanical keychron q1 wireless qmk aluminum switches",
+                gamer_id, "Gamers Heaven & Esports Store", "Surat", "Ring Road Tech Hub, Surat", "919876543212"
+            ),
+            (
+                "Samsung Odyssey OLED G9 49-inch Curved Gaming Monitor (240Hz, 0.03ms)",
+                "Colossal 49-inch 32:9 dual QHD curved OLED display with Neo Quantum Processor Pro, 240Hz refresh rate, 0.03ms response time, and DisplayHDR True Black 400.",
+                119999.0, 149999.0, 5, "Gaming", 4.9, 740, "Ultra Wide Beast",
                 "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&auto=format&fit=crop&q=80",
-                "monitor samsung 4k uhd ips display screen gaming office"
+                "monitor samsung odyssey oled 49 inch curved gaming ultrawide 240hz",
+                gamer_id, "Gamers Heaven & Esports Store", "Surat", "Ring Road Tech Hub, Surat", "919876543212"
             ),
             (
-                "Anker 7-in-1 USB-C Hub (4K HDMI, 100W Power Delivery, SD/TF)",
-                "Massive expansion with 4K@60Hz HDMI, 100W PD-IN port, USB-C data port, 2 USB-A data ports, and microSD / SD card readers.",
-                3499.0, 4999.0, 60, "Accessories", 4.5, 3810,
-                "#1 Best Seller",
-                "https://images.unsplash.com/photo-1622445262464-84b14e0745b1?w=500&auto=format&fit=crop&q=80",
-                "usb hub type c anker hdmi multiport adapter macbook laptop"
-            ),
-            (
-                "Apple Watch Series 9 (GPS 45mm, Midnight Aluminium)",
-                "Powerful S9 SiP chip with Double Tap gesture, brighter Always-On Retina display, advanced health sensors for ECG, blood oxygen, and sleep stages.",
-                41900.0, 44900.0, 22, "Wearables", 4.7, 1680,
-                "Amazon's Choice",
+                "Apple Watch Ultra 2 (GPS + Cellular 49mm Titanium, Ocean Band)",
+                "The most rugged and capable Apple Watch. Features 3000-nit brightest display, precision dual-frequency GPS, 36-hour battery life, and 100m water resistance for diving.",
+                84900.0, 89900.0, 10, "Wearables", 4.9, 1920, "Extreme Outdoor",
                 "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=500&auto=format&fit=crop&q=80",
-                "apple watch series 9 smart watch fitness tracker health wearables"
+                "apple watch ultra 2 titanium gps cellular smartwatch fitness diving",
+                istore_id, "iStore Express Premium Retail", "Bharuch", "Link Road, Near Zadeshwar, Bharuch", "919876543213"
             ),
             (
-                "SanDisk Extreme 1TB Portable External NVMe SSD (Up to 1050MB/s)",
-                "Tough drop-resistant storage with fast NVMe solid state performance, IP55 water and dust resistance, USB-C 3.2 Gen 2 interface.",
-                8999.0, 14500.0, 40, "Storage", 4.8, 5420,
-                "Limited Time Deal",
+                "Garmin Fenix 7 Pro Sapphire Solar Multisport Smartwatch (51mm Titanium)",
+                "Ultimate multisport GPS smartwatch with Solar charging lens, built-in LED flashlight, endurance score, Hill score, TopoActive maps, and up to 37 days battery life.",
+                79990.0, 94990.0, 8, "Wearables", 4.8, 890, "Endurance Pro",
+                "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=80",
+                "garmin fenix 7 pro solar titanium gps smartwatch endurance running",
+                istore_id, "iStore Express Premium Retail", "Bharuch", "Link Road, Near Zadeshwar, Bharuch", "919876543213"
+            ),
+            (
+                "SanDisk Extreme PRO 2TB Portable NVMe External SSD (2000MB/s USB 3.2)",
+                "Professional-grade solid state drive with blazing fast 2000MB/s read/write speeds, forged aluminum chassis acting as heatsink, and 2-meter drop protection.",
+                18999.0, 28999.0, 25, "Accessories", 4.9, 4100, "High Speed Storage",
                 "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=500&auto=format&fit=crop&q=80",
-                "ssd sandisk 1tb portable storage fast backup external drive"
+                "ssd sandisk 2tb portable nvme external backup fast storage usb c",
+                apex_id, "Apex Electronics & Computers", "Bharuch", "Station Road Commercial Complex, Bharuch", "919876543210"
             ),
             (
-                "Ergonomic Aluminium Laptop Stand with 360 Rotating Base",
-                "Heavy-duty aluminium laptop riser with cooling vents, height and angle adjustable mechanism, silicone anti-slip pads.",
-                1899.0, 3299.0, 75, "Accessories", 4.5, 1290,
-                "#1 Best Seller",
-                "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=500&auto=format&fit=crop&q=80",
-                "laptop stand aluminium ergonomic desk riser holder office"
+                "Dyson V12 Detect Slim Cordless Vacuum Cleaner (Laser Fluffy Head)",
+                "Dyson's lightest intelligent cordless vacuum with laser illumination that reveals invisible dust, piezo acoustic sensor for particle count, and anti-tangle Hair Screw tool.",
+                44900.0, 55900.0, 9, "Home", 4.7, 1630, "Smart Home Tech",
+                "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=500&auto=format&fit=crop&q=80",
+                "dyson v12 cordless vacuum cleaner laser smart home cleaning",
+                smart_id, "Smart Living Solutions", "Ahmedabad", "SG Highway Commercial Tower, Ahmedabad", "919876543214"
             ),
             (
-                "Bose QuietComfort 45 Bluetooth Wireless Noise Cancelling",
-                "High-fidelity audio with world-class noise cancelling, TriPort acoustic architecture, Aware Mode, and 24 hours of listening time.",
-                21990.0, 29900.0, 25, "Audio", 4.6, 2100,
-                "Prime Deal",
-                "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=500&auto=format&fit=crop&q=80",
-                "audio bose quietcomfort wireless headphones noise cancelling sound"
-            ),
-            (
-                "Designing Data-Intensive Applications by Martin Kleppmann",
-                "The definitive guide to the architecture of data systems, distributed databases, stream processing, reliability, scalability, and maintainability.",
-                1499.0, 2200.0, 50, "Books", 4.9, 8750,
-                "#1 Best Seller",
-                "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=500&auto=format&fit=crop&q=80",
-                "book data intensive applications python distributed systems database"
-            ),
-            (
-                "Python for Data Analysis (3rd Edition) - Wes McKinney",
-                "Complete guide to data wrangling, pandas, numpy, Jupyter, and scikit-learn by the creator of pandas. Essential for data science PBL.",
-                1199.0, 1850.0, 48, "Books", 4.8, 4310,
-                "Amazon's Choice",
-                "https://images.unsplash.com/photo-1532012164546-f432f2e3edd4?w=500&auto=format&fit=crop&q=80",
-                "python book pandas data analysis data science machine learning"
-            ),
-            (
-                "Echo Dot (5th Gen) Smart Speaker with Alexa & Deep Bass",
-                "Best-sounding Echo Dot yet with vibrant audio, voice control for smart home, music streaming from Spotify/Amazon Music, and motion sensing.",
-                3999.0, 5499.0, 65, "Home", 4.4, 6200,
-                "Amazon's Choice",
-                "https://images.unsplash.com/photo-1543512214-318c7553f230?w=500&auto=format&fit=crop&q=80",
-                "echo dot smart speaker alexa home smart voice assistant"
-            ),
-            (
-                "Philips Hue Smart LED Desk Lamp with 16 Million Colors",
-                "Smart ambient LED lamp with app control, customizable brightness presets, timer schedules, and voice sync with Alexa and Google Assistant.",
-                2799.0, 4199.0, 35, "Home", 4.5, 1140,
-                "Limited Time Deal",
+                "Philips Hue Play Gradient Lightstrip & Smart HDMI Sync Box",
+                "Surround your screen in reactive smart light that dynamically mirrors the colors of your gaming console, movies, and music in real time with zero latency.",
+                21999.0, 29999.0, 16, "Home", 4.6, 920, "Cinema Ambient",
                 "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=500&auto=format&fit=crop&q=80",
-                "lamp smart led philips hue desk light study home"
-            ),
-            (
-                "Razer DeathAdder V3 Pro Wireless Gaming Mouse",
-                "Ultra-lightweight 63g ergonomic gaming mouse with Focus Pro 30K Optical Sensor, Gen-3 Optical Switches, and 90-hour battery life.",
-                11499.0, 14999.0, 20, "Gaming", 4.7, 1890,
-                "Amazon's Choice",
-                "https://images.unsplash.com/photo-1527814050087-73880490b435?w=500&auto=format&fit=crop&q=80",
-                "mouse razer gaming rgb deathadder wireless sensor esports"
-            ),
-            (
-                "HyperX Cloud II Wireless Gaming Headset with 7.1 Surround",
-                "Signature HyperX comfort with memory foam ear cushions, 2.4GHz low-latency gaming-grade wireless, and 30-hour long-lasting battery.",
-                9990.0, 13990.0, 24, "Gaming", 4.6, 3210,
-                "Prime Deal",
-                "https://images.unsplash.com/photo-1599669454699-248893623440?w=500&auto=format&fit=crop&q=80",
-                "headset hyperx gaming wireless surround audio mic discord"
+                "philips hue smart lighting hdmi sync ambient tv lightstrip rgb",
+                smart_id, "Smart Living Solutions", "Ahmedabad", "SG Highway Commercial Tower, Ahmedabad", "919876543214"
             )
         ]
-        conn.executemany("""INSERT INTO products
-            (name, description, price, original_price, stock, category, rating, review_count, badge, image_url, tags, merchant_id, store_name)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,1,'DataCart Official')""", products)
 
-    conn.commit()
+        for p in products:
+            conn.execute("""
+                INSERT INTO products
+                (name, description, price, original_price, stock, category, rating, review_count, badge, image_url, tags, merchant_id, store_name, city, store_address, whatsapp_number)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, p)
+
+        conn.commit()
+
     conn.close()
 
 
@@ -822,8 +877,8 @@ def cart():
     
     # Get smart personalized coupons recommendation for the user
     suggested_coupons = [
-        {"code": "WELCOME10", "discount_pct": 10, "min_spend": 500, "title": "10% Welcome Discount"},
-        {"code": "AMAZONFEST15", "discount_pct": 15, "min_spend": 2000, "title": "Mega Tech Fest 15% Off"}
+        {"code": "WELCOME10", "discount_pct": 10, "min_spend": 500, "title": "10% New Shopper Welcome"},
+        {"code": "DATACART15", "discount_pct": 15, "min_spend": 2000, "title": "Hyperlocal Mega Fest 15% Off"}
     ]
     if session.get("customer_id"):
         customer_analyses = compute_customer_rfm_and_segments(conn)
@@ -838,9 +893,17 @@ def cart():
                     "badge": po["badge"]
                 })
                 break
+
+    # Fetch trending recommendations for intelligent empty cart state
+    trending_products = conn.execute("SELECT * FROM products ORDER BY rating DESC, review_count DESC LIMIT 4").fetchall()
     conn.close()
 
-    return render_template("cart.html", cart_info=cart_info, suggested_coupons=suggested_coupons)
+    return render_template(
+        "cart.html", 
+        cart_info=cart_info, 
+        suggested_coupons=suggested_coupons,
+        trending_products=trending_products
+    )
 
 
 @app.post("/coupon/apply")
@@ -855,7 +918,8 @@ def apply_coupon():
         "COMEBACK25": {"discount_pct": 25, "min_spend": 1000, "title": "Win-Back 25% Retention Discount"},
         "BUNDLE10": {"discount_pct": 10, "min_spend": 500, "title": "Frequently Bought Together 10% Off"},
         "WELCOME10": {"discount_pct": 10, "min_spend": 500, "title": "10% New Shopper Welcome"},
-        "AMAZONFEST15": {"discount_pct": 15, "min_spend": 2000, "title": "Tech Fest 15% Off"},
+        "DATACART15": {"discount_pct": 15, "min_spend": 2000, "title": "Hyperlocal Mega Fest 15% Off"},
+        "AMAZONFEST15": {"discount_pct": 15, "min_spend": 2000, "title": "Hyperlocal Mega Fest 15% Off"},
         "UPGRADE15": {"discount_pct": 15, "min_spend": 1200, "title": "15% Fast-Track VIP Upgrade"}
     }
 

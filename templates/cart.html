@@ -1,187 +1,260 @@
 {% extends "base.html" %}
 
-{% block title %}Shopping Cart — DataCart{% endblock %}
+{% block title %}Your Shopping Cart — DataCart{% endblock %}
 
 {% block content %}
 
-<div class="cart-layout">
-  
-  <!-- Main Cart Items Box -->
-  <div class="cart-main-box">
+<div style="max-width:1300px; margin:0 auto;">
+
+  {% if cart_info.cart_items %}
     
-    <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid var(--amz-border-subtle); padding-bottom:12px; margin-bottom:16px;">
-      <h1 style="font-size:24px; font-weight:700;">Shopping Cart</h1>
-      <span style="font-size:13px; color:var(--amz-muted);">Price</span>
-    </div>
+    <div class="cart-layout">
+      
+      <!-- Main Cart Items Box -->
+      <div class="cart-main-box" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:24px; box-shadow:0 2px 8px rgba(15,23,42,0.04);">
+        
+        <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid #e2e8f0; padding-bottom:14px; margin-bottom:18px;">
+          <h1 style="font-size:22px; font-weight:800; color:#0f172a;">Shopping Cart</h1>
+          <span style="font-size:13px; color:#64748b; font-weight:600;">Unit Price</span>
+        </div>
 
-    {% if cart_info.cart_items %}
-      <form method="post" action="{{ url_for('update_cart') }}" id="cartUpdateForm">
-        {% for item in cart_info.cart_items %}
-          <div class="cart-item-row">
-            
-            <!-- Item Thumbnail -->
-            <a href="{{ url_for('product', pid=item.product.id) }}">
-              <img class="cart-item-img" src="{{ item.product.image_url }}" alt="{{ item.product.name }}">
-            </a>
-
-            <!-- Item Details -->
-            <div>
-              <a href="{{ url_for('product', pid=item.product.id) }}" style="font-weight:700; font-size:15px; color:var(--amz-text); display:block; margin-bottom:4px;">
-                {{ item.product.name }}
-              </a>
+        <form method="post" action="{{ url_for('update_cart') }}" id="cartUpdateForm">
+          {% for item in cart_info.cart_items %}
+            <div class="cart-item-row" style="display:flex; justify-content:space-between; align-items:center; padding:18px 0; border-bottom:1px solid #f1f5f9; gap:18px;">
               
-              <div class="stock-status" style="font-size:12px; margin:2px 0;">In Stock</div>
-              <div class="prime-delivery-tag" style="font-size:11px; margin-bottom:8px;">✓ Eligible for FREE Shipping</div>
+              <!-- Item Thumbnail -->
+              <a href="{{ url_for('product', pid=item.product.id) }}" style="width:80px; height:80px; display:flex; align-items:center; justify-content:center; background:#f8fafc; border-radius:8px; padding:6px; flex-shrink:0;">
+                <img src="{{ item.product.image_url }}" alt="{{ item.product.name }}" style="max-width:100%; max-height:100%; object-fit:contain;">
+              </a>
 
-              <div style="display:flex; align-items:center; gap:14px;">
-                <div style="display:flex; align-items:center; gap:6px;">
-                  <label style="font-size:12px; color:var(--amz-muted);">Qty:</label>
-                  <input 
-                    type="number" 
-                    name="{{ item.product.id }}" 
-                    value="{{ item.quantity }}" 
-                    min="0" 
-                    max="{{ item.product.stock }}" 
-                    style="width:55px; padding:4px 6px; border:1px solid #ccc; border-radius:4px; font-size:13px;"
-                    onchange="document.getElementById('cartUpdateForm').submit()"
-                  >
-                </div>
-
-                <a href="{{ url_for('remove_cart_item', pid=item.product.id) }}" style="font-size:12px; color:var(--amz-blue);">
-                  Delete
+              <!-- Item Details -->
+              <div style="flex:1;">
+                <a href="{{ url_for('product', pid=item.product.id) }}" style="font-weight:700; font-size:15px; color:#0f172a; display:block; margin-bottom:4px;">
+                  {{ item.product.name }}
                 </a>
-              </div>
-            </div>
-
-            <!-- Item Price -->
-            <div style="text-align:right;">
-              <div style="font-size:18px; font-weight:800; color:var(--amz-text);">
-                ₹{{"{:,.0f}".format(item.line_total)}}
-              </div>
-              {% if item.orig_line_total > item.line_total %}
-                <div style="font-size:12px; color:var(--amz-muted); text-decoration:line-through;">
-                  ₹{{"{:,.0f}".format(item.orig_line_total)}}
+                
+                <div style="font-size:12px; color:#10b981; font-weight:700; margin:2px 0;">✓ In Stock</div>
+                <div style="font-size:11.5px; color:#64748b; margin-bottom:8px;">
+                  ⚡ Sold by <span style="color:#4f46e5; font-weight:700;">{{ item.product.store_name }}</span> ({{ item.product.city or user_city }})
                 </div>
-              {% endif %}
+
+                <div style="display:flex; align-items:center; gap:16px;">
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-size:12px; color:#64748b; font-weight:600;">Qty:</label>
+                    <input 
+                      type="number" 
+                      name="{{ item.product.id }}" 
+                      value="{{ item.quantity }}" 
+                      min="0" 
+                      max="{{ item.product.stock }}" 
+                      style="width:55px; padding:4px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; font-weight:700;"
+                      onchange="document.getElementById('cartUpdateForm').submit()"
+                    >
+                  </div>
+
+                  <a href="{{ url_for('remove_cart_item', pid=item.product.id) }}" style="font-size:12px; color:#ef4444; font-weight:600;">
+                    Remove
+                  </a>
+                </div>
+              </div>
+
+              <!-- Item Price -->
+              <div style="text-align:right; min-width:100px;">
+                <div style="font-size:18px; font-weight:900; color:#0f172a;">
+                  ₹{{"{:,.0f}".format(item.line_total)}}
+                </div>
+                {% if item.orig_line_total > item.line_total %}
+                  <div style="font-size:12px; color:#94a3b8; text-decoration:line-through;">
+                    ₹{{"{:,.0f}".format(item.orig_line_total)}}
+                  </div>
+                {% endif %}
+              </div>
+
             </div>
+          {% endfor %}
+        </form>
 
-          </div>
-        {% endfor %}
-      </form>
+        <div style="text-align:right; margin-top:20px; font-size:15px; color:#475569;">
+          Subtotal ({{ cart_count }} items): 
+          <strong style="font-size:22px; color:#0f172a; margin-left:6px;">
+            ₹{{"{:,.0f}".format(cart_info.raw_subtotal)}}
+          </strong>
+        </div>
 
-      <div style="text-align:right; margin-top:20px; font-size:16px;">
-        Subtotal ({{ cart_count }} items): 
-        <strong style="font-size:20px; color:var(--amz-text);">
-          ₹{{"{:,.0f}".format(cart_info.raw_subtotal)}}
-        </strong>
       </div>
 
-    {% else %}
-      <div style="text-align:center; padding:40px 20px;">
-        <h2>Your DataCart Cart is empty</h2>
-        <p style="color:var(--amz-muted); margin-top:8px;">Explore our catalog with AI recommendations and high discounts!</p>
-        <a href="{{ url_for('home') }}" class="btn-amz-primary" style="display:inline-block; margin-top:16px; max-width:220px;">
-          Continue Shopping
+      <!-- Right Sidebar: Order Summary & Coupons -->
+      <div class="cart-summary-sidebar" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:24px; height:fit-content; box-shadow:0 2px 8px rgba(15,23,42,0.04);">
+        
+        {% if cart_info.free_delivery_threshold_left == 0 and cart_info.raw_subtotal > 0 %}
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; padding:10px 14px; border-radius:8px; font-size:12px; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:16px;">✓</span>
+            <span>Your order qualifies for <strong>FREE Same-Day Delivery</strong>!</span>
+          </div>
+        {% elif cart_info.raw_subtotal > 0 %}
+          <div style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:10px 14px; border-radius:8px; font-size:12px; margin-bottom:16px;">
+            Add ₹{{"{:,.0f}".format(cart_info.free_delivery_threshold_left)}} more for <strong>FREE Express Delivery</strong>!
+          </div>
+        {% endif %}
+
+        <div style="font-size:16px; margin-bottom:14px; color:#64748b;">
+          Cart Subtotal: <strong style="font-size:22px; color:#0f172a;">₹{{"{:,.0f}".format(cart_info.raw_subtotal)}}</strong>
+        </div>
+
+        <!-- Applied Coupon Section -->
+        {% if cart_info.applied_coupon %}
+          <div style="background:#f0fdf4; border:1px solid #86efac; padding:10px 12px; border-radius:8px; margin-bottom:16px; font-size:13px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="color:#15803d; font-weight:800;">
+                ✓ '{{ cart_info.applied_coupon.code }}' Applied
+              </span>
+              <a href="{{ url_for('remove_coupon') }}" style="color:#ef4444; font-size:11px; font-weight:700;">Remove</a>
+            </div>
+            <div style="color:#166534; margin-top:3px; font-size:12px;">
+              Saved ₹{{"{:,.0f}".format(cart_info.discount_amount)}} ({{ cart_info.applied_coupon.discount_pct }}% off)
+            </div>
+          </div>
+        {% endif %}
+
+        <div style="border-top:1px solid #e2e8f0; padding-top:14px; margin-bottom:18px; font-size:14px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:8px; color:#64748b;">
+            <span>Items subtotal:</span>
+            <span style="color:#0f172a; font-weight:600;">₹{{"{:,.0f}".format(cart_info.raw_subtotal)}}</span>
+          </div>
+          {% if cart_info.discount_amount > 0 %}
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; color:#10b981; font-weight:700;">
+              <span>Promo Discount:</span>
+              <span>-₹{{"{:,.0f}".format(cart_info.discount_amount)}}</span>
+            </div>
+          {% endif %}
+          <div style="display:flex; justify-content:space-between; margin-bottom:8px; color:#64748b;">
+            <span>Delivery:</span>
+            <span style="color:#0f172a; font-weight:600;">{% if cart_info.delivery_fee == 0 %}FREE{% else %}₹{{ cart_info.delivery_fee }}{% endif %}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:19px; font-weight:900; border-top:1px solid #0f172a; padding-top:12px; margin-top:12px; color:#0f172a;">
+            <span>Total to Pay:</span>
+            <span>₹{{"{:,.0f}".format(cart_info.final_total)}}</span>
+          </div>
+        </div>
+
+        <a href="{{ url_for('checkout') }}" class="btn-amz-buy" style="display:block; margin-bottom:18px; font-size:14px; padding:12px; text-align:center;">
+          Proceed to Checkout 🔒
+        </a>
+
+        <!-- Personalized Coupons Box -->
+        <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:10px; padding:14px;">
+          <h4 style="font-size:13px; font-weight:800; color:#0f172a; margin-bottom:6px;">🎁 Available Promo Codes</h4>
+          <p style="font-size:11px; color:#64748b; margin-bottom:10px;">
+            Click to instantly apply coupon discounts:
+          </p>
+
+          {% for c in suggested_coupons %}
+            <div style="border-bottom:1px dashed #e2e8f0; padding:6px 0;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:12px; font-weight:800; color:#4f46e5;">{{ c.code }} ({{ c.discount_pct }}% OFF)</span>
+                <form method="post" action="{{ url_for('apply_coupon') }}">
+                  <input type="hidden" name="coupon_code" value="{{ c.code }}">
+                  <button type="submit" style="background:#4f46e5; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:11px; font-weight:700; cursor:pointer;">
+                    Apply
+                  </button>
+                </form>
+              </div>
+              <div style="font-size:10.5px; color:#64748b;">{{ c.title }} · Min spend ₹{{ c.min_spend }}</div>
+            </div>
+          {% endfor %}
+
+          <form method="post" action="{{ url_for('apply_coupon') }}" style="display:flex; gap:6px; margin-top:12px;">
+            <input 
+              type="text" 
+              name="coupon_code" 
+              placeholder="Enter Promo Code" 
+              class="dark-input" 
+              style="background:#fff; color:#111; border:1px solid #cbd5e1; font-size:12px; padding:6px 10px; flex:1;"
+              required
+            >
+            <button type="submit" class="btn-amz-secondary" style="padding:6px 12px; font-size:12px; font-weight:700;">Apply</button>
+          </form>
+        </div>
+
+      </div>
+
+    </div>
+
+  {% else %}
+
+    <!-- Intelligent Modern Empty Cart Experience -->
+    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:48px 24px; text-align:center; margin-bottom:32px; box-shadow:0 4px 16px rgba(15,23,42,0.04);">
+      <div style="font-size:52px; margin-bottom:14px;">🛒</div>
+      <h2 style="font-size:24px; font-weight:900; color:#0f172a; margin-bottom:8px;">Your Cart is Waiting for You!</h2>
+      <p style="color:#64748b; font-size:14px; max-width:520px; margin:0 auto 24px; line-height:1.6;">
+        Explore top tech, gadgets, and audio from verified local stores in <strong>{{ user_city }}</strong> with same-day express delivery.
+      </p>
+      
+      <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+        <a href="{{ url_for('home') }}" class="btn-amz-primary" style="max-width:220px; padding:11px 22px; font-size:13.5px;">
+          Explore Store Catalog
+        </a>
+        <a href="{{ url_for('offers') }}" class="btn-amz-secondary" style="padding:11px 22px; font-size:13.5px;">
+          🎁 View Today's Deals
         </a>
       </div>
-    {% endif %}
-
-  </div>
-
-  <!-- Right Sidebar: Order Summary & Dynamic Retention Coupons -->
-  <div class="cart-summary-sidebar">
-    
-    {% if cart_info.free_delivery_threshold_left == 0 and cart_info.raw_subtotal > 0 %}
-      <div style="background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; padding:10px 14px; border-radius:6px; font-size:12px; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
-        <span style="font-size:16px;">✓</span>
-        <span>Your order qualifies for <strong>FREE Delivery</strong>!</span>
-      </div>
-    {% elif cart_info.raw_subtotal > 0 %}
-      <div style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:10px 14px; border-radius:6px; font-size:12px; margin-bottom:14px;">
-        Add ₹{{"{:,.0f}".format(cart_info.free_delivery_threshold_left)}} more to unlock <strong>FREE Delivery</strong>!
-      </div>
-    {% endif %}
-
-    <div style="font-size:18px; margin-bottom:14px;">
-      Subtotal: <strong style="font-size:22px;">₹{{"{:,.0f}".format(cart_info.raw_subtotal)}}</strong>
     </div>
 
-    <!-- Applied Coupon Section -->
-    {% if cart_info.applied_coupon %}
-      <div style="background:#f0fdf4; border:1px solid #86efac; padding:10px 12px; border-radius:6px; margin-bottom:14px; font-size:13px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="color:#15803d; font-weight:700;">
-            ✓ Coupon '{{ cart_info.applied_coupon.code }}' Applied
-          </span>
-          <a href="{{ url_for('remove_coupon') }}" style="color:var(--amz-deal-red); font-size:11px; font-weight:700;">Remove</a>
-        </div>
-        <div style="color:#166534; margin-top:2px;">
-          Discount: -₹{{"{:,.0f}".format(cart_info.discount_amount)}} ({{ cart_info.applied_coupon.discount_pct }}% off)
-        </div>
-      </div>
-    {% endif %}
-
-    <div style="border-top:1px solid var(--amz-border-subtle); padding-top:12px; margin-bottom:16px; font-size:14px;">
-      <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-        <span style="color:var(--amz-muted);">Items total:</span>
-        <span>₹{{"{:,.0f}".format(cart_info.raw_subtotal)}}</span>
-      </div>
-      {% if cart_info.discount_amount > 0 %}
-        <div style="display:flex; justify-content:space-between; margin-bottom:6px; color:#16a34a; font-weight:700;">
-          <span>Discount:</span>
-          <span>-₹{{"{:,.0f}".format(cart_info.discount_amount)}}</span>
-        </div>
-      {% endif %}
-      <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-        <span style="color:var(--amz-muted);">Delivery fee:</span>
-        <span>{% if cart_info.delivery_fee == 0 %}FREE{% else %}₹{{ cart_info.delivery_fee }}{% endif %}</span>
-      </div>
-      <div style="display:flex; justify-content:space-between; font-size:18px; font-weight:800; border-top:1px solid var(--amz-border-subtle); padding-top:8px; margin-top:8px;">
-        <span>Final Total:</span>
-        <span>₹{{"{:,.0f}".format(cart_info.final_total)}}</span>
-      </div>
-    </div>
-
-    {% if cart_info.cart_items %}
-      <a href="{{ url_for('checkout') }}" class="btn-amz-buy" style="display:block; margin-bottom:16px;">
-        Proceed to Checkout
-      </a>
-    {% endif %}
-
-    <!-- Personalized Coupons Box -->
-    <div class="coupon-suggestion-box">
-      <h4 style="font-size:13px; font-weight:700; margin-bottom:6px;">🎁 Personalized AI Discounts</h4>
-      <p style="font-size:11px; color:var(--amz-muted); margin-bottom:8px;">
-        Click below to instantly apply targeted retention vouchers:
-      </p>
-
-      {% for c in suggested_coupons %}
-        <div style="border-bottom:1px dashed #e2e8f0; padding:6px 0;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-size:12px; font-weight:700; color:var(--amz-text);">{{ c.code }} ({{ c.discount_pct }}% OFF)</span>
-            <form method="post" action="{{ url_for('apply_coupon') }}">
-              <input type="hidden" name="coupon_code" value="{{ c.code }}">
-              <button type="submit" class="coupon-pill-btn">Apply</button>
-            </form>
+    <!-- Embedded Trending Products in Empty Cart -->
+    {% if trending_products %}
+      <div class="section-box" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:24px;">
+        <div class="section-header">
+          <div>
+            <h3 style="font-size:18px; font-weight:800; color:#0f172a; margin:0;">⚡ Popular Items Delivering to {{ user_city }}</h3>
+            <span class="sub-count" style="color:#64748b;">Top rated products ready to dispatch today</span>
           </div>
-          <div style="font-size:10px; color:var(--amz-muted);">{{ c.title }} · Min spend ₹{{ c.min_spend }}</div>
+          <a href="{{ url_for('home') }}" style="font-size:13px; font-weight:700; color:#4f46e5;">View All →</a>
         </div>
-      {% endfor %}
 
-      <form method="post" action="{{ url_for('apply_coupon') }}" style="display:flex; gap:6px; margin-top:10px;">
-        <input 
-          type="text" 
-          name="coupon_code" 
-          placeholder="Enter Promo Code" 
-          class="dark-input" 
-          style="background:#fff; color:#111; border:1px solid #ccc; font-size:12px; padding:6px 8px; flex:1;"
-          required
-        >
-        <button type="submit" class="btn-amz-secondary" style="padding:6px 10px; font-size:12px;">Apply</button>
-      </form>
-    </div>
+        <div class="products-grid">
+          {% for p in trending_products %}
+            <div class="product-card">
+              {% if p.badge %}
+                <span class="badge-flag bestseller">{{ p.badge }}</span>
+              {% endif %}
 
-  </div>
+              <a href="{{ url_for('product', pid=p.id) }}" class="product-img-wrapper">
+                <img class="product-img" src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
+              </a>
+
+              <div class="product-info">
+                <span class="product-category-tag">{{ p.category }}</span>
+                <a href="{{ url_for('product', pid=p.id) }}" class="product-title" title="{{ p.name }}">
+                  {{ p.name }}
+                </a>
+
+                <div class="rating-row">
+                  <span class="stars">★★★★★</span>
+                  <span class="rating-count">★ {{ p.rating }} ({{ p.review_count }})</span>
+                </div>
+
+                <div class="price-row">
+                  <span class="current-price"><span class="currency">₹</span>{{"{:,.0f}".format(p.price)}}</span>
+                  {% if p.original_price > p.price %}
+                    <span class="original-price">₹{{"{:,.0f}".format(p.original_price)}}</span>
+                  {% endif %}
+                </div>
+
+                <div class="prime-delivery-tag">⚡ Express Delivery in {{ user_city }}</div>
+
+                <div class="product-actions">
+                  <form method="post" action="{{ url_for('add_cart', pid=p.id) }}" style="width:100%">
+                    <button class="btn-amz-primary" type="submit">Add to Cart</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+  {% endif %}
 
 </div>
 
