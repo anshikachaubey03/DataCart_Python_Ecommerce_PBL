@@ -17,12 +17,15 @@
         </p>
       </div>
 
-      <div style="display:flex; gap:10px; align-items:center;">
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <a href="{{ url_for('store_page', mid=session['merchant_id']) }}" target="_blank" class="btn-amz-secondary" style="font-size:12px; background:#10b981; color:#fff; border:none; padding:8px 14px; font-weight:700;">
+          🏬 View Public Storefront
+        </a>
         <a href="{{ url_for('merchant_add_product') }}" class="btn-amz-buy" style="font-size:13px; padding:10px 20px;">
           ➕ Add New Product
         </a>
         <a href="{{ url_for('merchant_logout') }}" class="btn-amz-secondary" style="font-size:12px; background:rgba(255,255,255,0.1); color:#fff; border-color:rgba(255,255,255,0.2);">
-          Sign Out of Seller Central
+          Sign Out
         </a>
       </div>
     </div>

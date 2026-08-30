@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 
 {% block title %}
-  {% if mode == 'merchant_register' %}Register Seller Account — DataCart Seller Central
+  {% if mode == 'admin_login' %}Executive Admin Sign-In — DataCart BI
+  {% elif mode == 'merchant_register' %}Register Seller Account — DataCart Seller Central
   {% elif mode == 'merchant_login' %}Sign-In to Seller Central — DataCart
   {% elif mode == 'register' %}Create Account — DataCart
   {% else %}Sign-In — DataCart{% endif %}
@@ -11,14 +12,18 @@
 
 <div style="max-width:480px; margin:30px auto;">
   
-  <div class="section-box" style="padding:28px;">
+  <div class="section-box" style="padding:28px; {% if mode == 'admin_login' %}border:1px solid #ef4444; background:#0f172a; color:#fff;{% endif %}">
     
     <div style="margin-bottom:18px;">
-      {% if 'merchant' in mode %}
+      {% if mode == 'admin_login' %}
+        <span class="hero-tag" style="background:#ef4444; color:#fff;">⚡ Executive Administration</span>
+      {% elif 'merchant' in mode %}
         <span class="hero-tag" style="background:#febd69; color:#111;">📦 Seller Central Portal</span>
       {% endif %}
-      <h1 style="font-size:24px; font-weight:700; margin-top:6px;">
-        {% if mode == 'merchant_register' %}Start Selling on DataCart
+      
+      <h1 style="font-size:24px; font-weight:700; margin-top:6px; {% if mode == 'admin_login' %}color:#fff;{% endif %}">
+        {% if mode == 'admin_login' %}Administrator BI Sign-In
+        {% elif mode == 'merchant_register' %}Start Selling on DataCart
         {% elif mode == 'merchant_login' %}Sign-In to Seller Central
         {% elif mode == 'register' %}Create Customer Account
         {% else %}Customer Sign-In{% endif %}
@@ -26,7 +31,8 @@
     </div>
 
     <form method="post" action="
-      {% if mode == 'merchant_register' %}{{ url_for('merchant_register') }}
+      {% if mode == 'admin_login' %}{{ url_for('admin_login', next=request.args.get('next')) }}
+      {% elif mode == 'merchant_register' %}{{ url_for('merchant_register') }}
       {% elif mode == 'merchant_login' %}{{ url_for('merchant_login') }}
       {% elif mode == 'register' %}{{ url_for('register') }}
       {% else %}{{ url_for('login', next=request.args.get('next')) }}{% endif %}
@@ -55,15 +61,33 @@
       {% endif %}
 
       <div style="margin-bottom:14px;">
-        <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">
-          {% if 'merchant' in mode %}Business Email *{% else %}Email Address *{% endif %}
+        <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px; {% if mode == 'admin_login' %}color:#cbd5e1;{% endif %}">
+          {% if mode == 'admin_login' %}Admin Email Address *
+          {% elif 'merchant' in mode %}Business Email *
+          {% else %}Email Address *{% endif %}
         </label>
-        <input type="email" name="email" class="dark-input" style="background:#fff; color:#111; border:1px solid #888; width:100%;" placeholder="user@example.com" required>
+        <input 
+          type="email" 
+          name="email" 
+          class="dark-input" 
+          style="{% if mode == 'admin_login' %}background:#1e293b; color:#fff; border:1px solid #475569;{% else %}background:#fff; color:#111; border:1px solid #888;{% endif %} width:100%;" 
+          placeholder="{% if mode == 'admin_login' %}admin@datacart.com{% else %}user@example.com{% endif %}" 
+          required
+        >
       </div>
 
       <div style="margin-bottom:18px;">
-        <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px;">Password *</label>
-        <input type="password" name="password" class="dark-input" style="background:#fff; color:#111; border:1px solid #888; width:100%;" placeholder="At least 6 characters" required>
+        <label style="font-size:13px; font-weight:700; display:block; margin-bottom:4px; {% if mode == 'admin_login' %}color:#cbd5e1;{% endif %}">
+          Password *
+        </label>
+        <input 
+          type="password" 
+          name="password" 
+          class="dark-input" 
+          style="{% if mode == 'admin_login' %}background:#1e293b; color:#fff; border:1px solid #475569;{% else %}background:#fff; color:#111; border:1px solid #888;{% endif %} width:100%;" 
+          placeholder="At least 6 characters" 
+          required
+        >
       </div>
 
       {% if mode in ('register', 'merchant_register') %}
@@ -75,15 +99,18 @@
         </div>
       {% endif %}
 
-      <button type="submit" class="btn-amz-buy" style="margin-bottom:16px;">
-        {% if mode == 'merchant_register' %}Register Merchant & Open Store
+      <button type="submit" class="btn-amz-buy" style="margin-bottom:16px; {% if mode == 'admin_login' %}background:#ef4444; color:#fff;{% endif %}">
+        {% if mode == 'admin_login' %}Unlock Executive BI Hub
+        {% elif mode == 'merchant_register' %}Register Merchant & Open Store
         {% elif mode == 'merchant_login' %}Sign-In to Seller Central
         {% elif mode == 'register' %}Create Customer Account
         {% else %}Continue{% endif %}
       </button>
 
       <div style="border-top:1px solid var(--amz-border-subtle); padding-top:14px; text-align:center; font-size:13px; display:flex; flex-direction:column; gap:8px;">
-        {% if mode == 'merchant_register' %}
+        {% if mode == 'admin_login' %}
+          <div><a href="{{ url_for('home') }}" style="color:#94a3b8;">← Return to Customer Storefront</a></div>
+        {% elif mode == 'merchant_register' %}
           <div>Already a seller? <a href="{{ url_for('merchant_login') }}" style="font-weight:700;">Seller Sign-In →</a></div>
           <div>Looking to buy items? <a href="{{ url_for('login') }}">Customer Sign-In →</a></div>
         {% elif mode == 'merchant_login' %}
@@ -100,17 +127,6 @@
 
     </form>
 
-  </div>
-
-  <!-- Real-Time Merchant Note -->
-  <div class="section-box" style="margin-top:20px; background:#f8fafc; border:1px dashed #3b82f6; padding:20px;">
-    <h3 style="font-size:14px; font-weight:800; color:var(--amz-text); margin-bottom:6px;">
-      ⚡ Real-Time Multi-Vendor Selling
-    </h3>
-    <p style="font-size:12px; color:var(--amz-muted); line-height:1.6; margin:0;">
-      Register as a Merchant to list products with live inventory, custom badges, and prices. 
-      When shoppers place orders, inventory and merchant earnings update in real-time!
-    </p>
   </div>
 
 </div>

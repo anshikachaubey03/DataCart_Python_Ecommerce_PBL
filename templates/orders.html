@@ -66,6 +66,9 @@
                       Buy it again
                     </button>
                   </form>
+                  <a href="{{ url_for('print_invoice', oid=o.order.id) }}" target="_blank" class="btn-amz-secondary" style="font-size:12px; padding:6px 12px; text-align:center; background:#f8fafc; color:#0f172a;">
+                    🧾 Tax Invoice PDF
+                  </a>
                   <a href="{{ url_for('product', pid=item.product_id) }}" class="btn-amz-secondary" style="font-size:12px; padding:6px 12px; text-align:center;">
                     View item details
                   </a>

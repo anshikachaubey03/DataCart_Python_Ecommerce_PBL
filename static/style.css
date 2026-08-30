@@ -1366,3 +1366,66 @@ a:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* Floating WhatsApp Customer Support Widget */
+.whatsapp-floating-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #25d366;
+  color: #ffffff !important;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 12px 18px;
+  border-radius: 50px;
+  box-shadow: 0 8px 24px rgba(37, 211, 102, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 999;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.whatsapp-floating-btn:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 12px 30px rgba(37, 211, 102, 0.5);
+  color: #ffffff;
+}
+
+/* Local Store Cards Grid */
+.local-stores-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.local-store-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.local-store-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.06);
+  border-color: #3b82f6;
+}
+
+@media (max-width: 992px) {
+  .local-stores-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 540px) {
+  .local-stores-grid {
+    grid-template-columns: 1fr;
+  }
+}

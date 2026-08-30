@@ -105,6 +105,16 @@ def merchant_required(f):
     return decorated_function
 
 
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get("role") != "admin":
+            flash("Administrator authentication required to access Executive BI Dashboard.", "error")
+            return redirect(url_for("admin_login", next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 # -----------------------------
 # Database Connection & Migration
 # -----------------------------
@@ -125,6 +135,8 @@ def init_db():
         role TEXT DEFAULT 'customer',
         store_name TEXT DEFAULT '',
         business_id TEXT DEFAULT '',
+        city TEXT DEFAULT 'Bharuch',
+        whatsapp TEXT DEFAULT '',
         address TEXT DEFAULT '',
         pincode TEXT DEFAULT '392001',
         created_at TEXT NOT NULL
@@ -143,7 +155,10 @@ def init_db():
         image_url TEXT DEFAULT '',
         tags TEXT DEFAULT '',
         merchant_id INTEGER DEFAULT 1,
-        store_name TEXT DEFAULT 'DataCart Official'
+        store_name TEXT DEFAULT 'DataCart Direct',
+        city TEXT DEFAULT 'Bharuch',
+        store_address TEXT DEFAULT 'Station Road, Bharuch',
+        whatsapp_number TEXT DEFAULT '919876543210'
     );
     CREATE TABLE IF NOT EXISTS orders(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -197,8 +212,13 @@ def init_db():
         ("customers", "role", "TEXT DEFAULT 'customer'"),
         ("customers", "store_name", "TEXT DEFAULT ''"),
         ("customers", "business_id", "TEXT DEFAULT ''"),
+        ("customers", "city", "TEXT DEFAULT 'Bharuch'"),
+        ("customers", "whatsapp", "TEXT DEFAULT ''"),
         ("products", "merchant_id", "INTEGER DEFAULT 1"),
-        ("products", "store_name", "TEXT DEFAULT 'DataCart Official'"),
+        ("products", "store_name", "TEXT DEFAULT 'DataCart Direct'"),
+        ("products", "city", "TEXT DEFAULT 'Bharuch'"),
+        ("products", "store_address", "TEXT DEFAULT 'Station Road, Bharuch'"),
+        ("products", "whatsapp_number", "TEXT DEFAULT '919876543210'"),
         ("order_items", "merchant_id", "INTEGER DEFAULT 1"),
         ("payments", "masked_details", "TEXT DEFAULT ''"),
         ("payments", "signature_hash", "TEXT DEFAULT ''")
@@ -207,6 +227,25 @@ def init_db():
             conn.execute(f"ALTER TABLE {col_def[0]} ADD COLUMN {col_def[1]} {col_def[2]}")
         except:
             pass
+
+    # Ensure default Administrator account exists
+    admin_row = conn.execute("SELECT id FROM customers WHERE email='admin@datacart.com'").fetchone()
+    if not admin_row:
+        conn.execute("""
+            INSERT INTO customers(name, email, password_hash, role, store_name, business_id, address, pincode, created_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            "DataCart Executive Admin",
+            "admin@datacart.com",
+            generate_password_hash("admin123"),
+            "admin",
+            "DataCart Corporate HQ",
+            "GSTIN24ADMIN9999Z1",
+            "Corporate Tech Park, Highway",
+            "392001",
+            datetime.utcnow().isoformat()
+        ))
+        conn.commit()
 
     # Seed rich products catalog if empty or upgrade if needed
     count = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
@@ -533,6 +572,13 @@ def inject_globals():
     cart_info = cart_details()
     conn = db()
     categories = [r["category"] for r in conn.execute("SELECT DISTINCT category FROM products ORDER BY category")]
+    featured_stores = conn.execute("""
+        SELECT id, store_name, name, address, city, whatsapp 
+        FROM customers 
+        WHERE role='merchant' 
+        ORDER BY id DESC 
+        LIMIT 6
+    """).fetchall()
     
     # Check current customer segment and offer
     active_user_offer = None
@@ -554,10 +600,15 @@ def inject_globals():
         "all_categories": categories,
         "active_user_offer": active_user_offer,
         "user_segment": user_segment,
+        "is_admin": session.get("role") == "admin",
+        "user_role": session.get("role", "customer"),
         "is_merchant": bool(session.get("merchant_id")),
         "merchant_id": session.get("merchant_id"),
         "merchant_store_name": session.get("store_name", ""),
         "merchant_name": session.get("merchant_name", ""),
+        "user_city": session.get("user_city", "Bharuch"),
+        "popular_cities": ["Bharuch", "Vadodara", "Surat", "Ahmedabad", "Rajkot", "Gandhinagar", "Mumbai", "Delhi NCR"],
+        "featured_stores": featured_stores,
         "now_year": datetime.utcnow().year
     }
 
@@ -572,6 +623,7 @@ def home():
     min_price = request.args.get("min_price")
     max_price = request.args.get("max_price")
     sort_by = request.args.get("sort", "featured")
+    selected_city = request.args.get("city", session.get("user_city", "Bharuch"))
 
     products = search_products(
         query=query,
@@ -585,6 +637,7 @@ def home():
     categories = [r["category"] for r in conn.execute("SELECT DISTINCT category FROM products ORDER BY category")]
     best_sellers = conn.execute("SELECT * FROM products ORDER BY rating DESC, review_count DESC LIMIT 4").fetchall()
     deals = conn.execute("SELECT * FROM products WHERE badge != '' ORDER BY price ASC LIMIT 4").fetchall()
+    local_stores = conn.execute("SELECT * FROM customers WHERE role='merchant' ORDER BY id DESC LIMIT 8").fetchall()
 
     recs = []
     customer_profile = None
@@ -604,12 +657,23 @@ def home():
         categories=categories,
         best_sellers=best_sellers,
         deals=deals,
+        local_stores=local_stores,
         recs=recs,
         q=query,
         selected_category=category,
+        selected_city=selected_city,
         sort_by=sort_by,
         customer_profile=customer_profile
     )
+
+
+@app.post("/set-location")
+def set_location():
+    city = request.form.get("city", "Bharuch").strip()
+    session["user_city"] = city
+    session.modified = True
+    flash(f"Delivery location set to {city}. Exploring nearby local stores & express delivery!", "info")
+    return redirect(request.referrer or url_for("home"))
 
 
 @app.route("/product/<int:pid>")
@@ -1008,10 +1072,14 @@ def offers():
 # -----------------------------
 # Analytics & BI Dashboard
 # -----------------------------
+# -----------------------------
+# Protected Executive BI & Data Science Hub (Admin Only)
+# -----------------------------
 @app.get("/analytics")
+@admin_required
 def analytics():
     """
-    Executive Business Intelligence & Data Science Dashboard.
+    Executive Business Intelligence & Data Science Dashboard (Restricted to Admin).
     Provides RFM customer segmentation, churn scoring, market basket lift metrics,
     and interactive visualizations.
     """
@@ -1029,8 +1097,9 @@ def analytics():
 
 
 @app.get("/api/analytics/charts")
+@admin_required
 def api_analytics_charts():
-    """JSON API for interactive Chart.js graphs and dynamic filter updates."""
+    """JSON API for interactive Chart.js graphs (Admin Only)."""
     conn = db()
     data = get_executive_bi_dashboard_data(conn)
     conn.close()
@@ -1038,8 +1107,9 @@ def api_analytics_charts():
 
 
 @app.get("/api/analytics/live-events")
+@admin_required
 def api_analytics_live_events():
-    """JSON API streaming the latest 15 real-time customer behavioral events."""
+    """JSON API streaming the latest 15 real-time customer behavioral events (Admin Only)."""
     conn = db()
     events = conn.execute("""
         SELECT e.id, e.event_type, e.created_at, e.customer_id,
@@ -1057,6 +1127,7 @@ def api_analytics_live_events():
 
 
 @app.post("/admin/reset-realtime-data")
+@admin_required
 def admin_reset_data():
     """Clears all customer orders, carts, and telemetry to start fresh."""
     conn = db()
@@ -1064,15 +1135,16 @@ def admin_reset_data():
     conn.execute("DELETE FROM order_items")
     conn.execute("DELETE FROM payments")
     conn.execute("DELETE FROM events")
-    conn.execute("DELETE FROM customers")
+    conn.execute("DELETE FROM customers WHERE role != 'admin'")
     conn.commit()
     conn.close()
     session.clear()
-    flash("Database reset! Real-time analytics is now clean and awaiting real user traffic.", "info")
-    return redirect(url_for("analytics"))
+    flash("Database reset! Real-time analytics is now clean and awaiting traffic.", "info")
+    return redirect(url_for("home"))
 
 
 @app.get("/api/customer/<int:cid>/profile")
+@admin_required
 def api_customer_profile(cid):
     """Returns detailed customer profile and recommended retention strategy."""
     conn = db()
@@ -1082,6 +1154,90 @@ def api_customer_profile(cid):
         if c["id"] == cid:
             return jsonify({"status": "success", "customer": c})
     return jsonify({"status": "error", "message": "Customer not found"}), 404
+
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    if request.method == "POST":
+        email = request.form["email"].strip().lower()
+        password = request.form["password"]
+        conn = db()
+        user = conn.execute("SELECT * FROM customers WHERE email=? AND role='admin'", (email,)).fetchone()
+        conn.close()
+
+        if user and check_password_hash(user["password_hash"], password):
+            session["admin_id"] = user["id"]
+            session["role"] = "admin"
+            session["admin_name"] = user["name"]
+            session["customer_id"] = user["id"]
+            session["customer_name"] = user["name"]
+
+            flash("Welcome, Administrator! Executive Business Intelligence Portal Unlocked.", "success")
+            next_url = request.args.get("next")
+            return redirect(next_url or url_for("analytics"))
+
+        flash("Invalid administrator credentials. Access restricted to authorized personnel.", "error")
+
+    return render_template("auth.html", mode="admin_login")
+
+
+@app.get("/admin/logout")
+def admin_logout():
+    session.pop("admin_id", None)
+    session.pop("role", None)
+    session.pop("admin_name", None)
+    flash("Logged out from Executive Admin portal.", "info")
+    return redirect(url_for("home"))
+
+
+# -----------------------------
+# Dedicated Merchant Storefront & Tax Invoice
+# -----------------------------
+@app.get("/store/<int:mid>")
+def store_page(mid):
+    conn = db()
+    merchant = conn.execute("SELECT * FROM customers WHERE id=? AND role='merchant'", (mid,)).fetchone()
+    if not merchant:
+        conn.close()
+        flash("Store not found.", "error")
+        return redirect(url_for("home"))
+
+    products = conn.execute("SELECT * FROM products WHERE merchant_id=? ORDER BY id DESC", (mid,)).fetchall()
+    conn.close()
+
+    return render_template("store_page.html", merchant=merchant, products=products)
+
+
+@app.get("/order/invoice/<int:oid>")
+def print_invoice(oid):
+    conn = db()
+    order = conn.execute("SELECT * FROM orders WHERE id=?", (oid,)).fetchone()
+    if not order:
+        conn.close()
+        return redirect(url_for("home"))
+
+    # Security verification
+    is_authorized = (
+        session.get("customer_id") == order["customer_id"] or
+        session.get("role") == "admin" or
+        bool(session.get("merchant_id"))
+    )
+    if not is_authorized:
+        conn.close()
+        flash("Unauthorized to view this invoice.", "error")
+        return redirect(url_for("orders"))
+
+    customer = conn.execute("SELECT * FROM customers WHERE id=?", (order["customer_id"],)).fetchone()
+    items = conn.execute("""
+        SELECT oi.*, p.name as product_name, p.category, p.store_name, p.image_url
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = ?
+    """, (oid,)).fetchall()
+    payment = conn.execute("SELECT * FROM payments WHERE order_id=?", (oid,)).fetchone()
+    conn.close()
+
+    return render_template("invoice.html", order=order, customer=customer, items=items, payment=payment)
 
 
 # -----------------------------
@@ -1322,13 +1478,19 @@ def merchant_add_product():
         tags_full = f"{tags} {name} {category} {session.get('store_name', '')}".lower()
 
         conn = db()
+        merchant_info = conn.execute("SELECT city, address, whatsapp FROM customers WHERE id=?", (session["merchant_id"],)).fetchone()
+        city = merchant_info["city"] if merchant_info and merchant_info["city"] else "Bharuch"
+        store_address = merchant_info["address"] if merchant_info and merchant_info["address"] else "Local Commercial Market"
+        whatsapp = merchant_info["whatsapp"] if merchant_info and merchant_info["whatsapp"] else "919876543210"
+
         cur = conn.execute("""
-            INSERT INTO products(name, description, price, original_price, stock, category, rating, review_count, badge, image_url, tags, merchant_id, store_name)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO products(name, description, price, original_price, stock, category, rating, review_count, badge, image_url, tags, merchant_id, store_name, city, store_address, whatsapp_number)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             name, description, price, original_price, stock, category,
             5.0, 1, badge, image_url, tags_full,
-            session["merchant_id"], session.get("store_name", "DataCart Official")
+            session["merchant_id"], session.get("store_name", "DataCart Direct"),
+            city, store_address, whatsapp
         ))
         pid = cur.lastrowid
 
