@@ -266,41 +266,40 @@ def init_db():
         conn.commit()
 
     # Seed Verified Local Merchants in Ankleshwar
-    merchant_count = conn.execute("SELECT COUNT(*) FROM customers WHERE role='merchant'").fetchone()[0]
-    if merchant_count < 4:
-        merchants = [
-            (
-                "Shreeji Electronics", "shreeji.ank@example.com", generate_password_hash("seller123"), "merchant",
-                "Shreeji Electronics & Appliances", "GSTIN24AABCS1234F1Z1", "Ankleshwar", "919876543210",
-                "Shop 12, Station Road Commercial Complex, Ankleshwar", "393001", datetime.utcnow().isoformat()
-            ),
-            (
-                "Narmada Tech", "narmada.tech@example.com", generate_password_hash("seller123"), "merchant",
-                "Narmada Tech & IT Solutions", "GSTIN24AABCN5678G1Z2", "Ankleshwar", "919876543211",
-                "GIDC Industrial Estate, Near Water Tank, Ankleshwar", "393002", datetime.utcnow().isoformat()
-            ),
-            (
-                "Gujarat Smart Living", "smart.living@example.com", generate_password_hash("seller123"), "merchant",
-                "Gujarat Smart Living & Lighting", "GSTIN24AABCG9101H1Z3", "Ankleshwar", "919876543212",
-                "Rajpipla Road High Street, Ankleshwar", "393001", datetime.utcnow().isoformat()
-            ),
-            (
-                "Ankleshwar Sound Studio", "sound.studio@example.com", generate_password_hash("seller123"), "merchant",
-                "Ankleshwar Sound Studio & Acoustics", "GSTIN24AABCS3141J1Z4", "Ankleshwar", "919876543213",
-                "Valia Road Corner, Ankleshwar", "393002", datetime.utcnow().isoformat()
-            ),
-            (
-                "Radhe Hardware", "radhe.hardware@example.com", generate_password_hash("seller123"), "merchant",
-                "Radhe Industrial Hardware & Tools", "GSTIN24AABCR5161K1Z5", "Ankleshwar", "919876543214",
-                "Plot 45, GIDC Phase-1, Ankleshwar", "393002", datetime.utcnow().isoformat()
-            )
-        ]
-        for m in merchants:
-            conn.execute("""
-                INSERT OR IGNORE INTO customers(name, email, password_hash, role, store_name, business_id, city, whatsapp, address, pincode, created_at)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?)
-            """, m)
-        conn.commit()
+    conn.execute("DELETE FROM customers WHERE role='merchant' AND city != 'Ankleshwar'")
+    merchants = [
+        (
+            "Shreeji Electronics", "shreeji.ank@example.com", generate_password_hash("seller123"), "merchant",
+            "Shreeji Electronics & Appliances", "GSTIN24AABCS1234F1Z1", "Ankleshwar", "919876543210",
+            "Shop 12, Station Road Commercial Complex, Ankleshwar", "393001", datetime.utcnow().isoformat()
+        ),
+        (
+            "Narmada Tech", "narmada.tech@example.com", generate_password_hash("seller123"), "merchant",
+            "Narmada Tech & IT Solutions", "GSTIN24AABCN5678G1Z2", "Ankleshwar", "919876543211",
+            "GIDC Industrial Estate, Near Water Tank, Ankleshwar", "393002", datetime.utcnow().isoformat()
+        ),
+        (
+            "Gujarat Smart Living", "smart.living@example.com", generate_password_hash("seller123"), "merchant",
+            "Gujarat Smart Living & Lighting", "GSTIN24AABCG9101H1Z3", "Ankleshwar", "919876543212",
+            "Rajpipla Road High Street, Ankleshwar", "393001", datetime.utcnow().isoformat()
+        ),
+        (
+            "Ankleshwar Sound Studio", "sound.studio@example.com", generate_password_hash("seller123"), "merchant",
+            "Ankleshwar Sound Studio & Acoustics", "GSTIN24AABCS3141J1Z4", "Ankleshwar", "919876543213",
+            "Valia Road Corner, Ankleshwar", "393002", datetime.utcnow().isoformat()
+        ),
+        (
+            "Radhe Hardware", "radhe.hardware@example.com", generate_password_hash("seller123"), "merchant",
+            "Radhe Industrial Hardware & Tools", "GSTIN24AABCR5161K1Z5", "Ankleshwar", "919876543214",
+            "Plot 45, GIDC Phase-1, Ankleshwar", "393002", datetime.utcnow().isoformat()
+        )
+    ]
+    for m in merchants:
+        conn.execute("""
+            INSERT OR REPLACE INTO customers(name, email, password_hash, role, store_name, business_id, city, whatsapp, address, pincode, created_at)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?)
+        """, m)
+    conn.commit()
 
     # Fetch seeded merchant IDs
     shreeji_m = conn.execute("SELECT id FROM customers WHERE store_name='Shreeji Electronics & Appliances'").fetchone()
@@ -688,8 +687,8 @@ def inject_globals():
         "merchant_id": session.get("merchant_id"),
         "merchant_store_name": session.get("store_name", ""),
         "merchant_name": session.get("merchant_name", ""),
-        "user_city": session.get("user_city", "Bharuch"),
-        "popular_cities": ["Bharuch", "Vadodara", "Surat", "Ahmedabad", "Rajkot", "Gandhinagar", "Mumbai", "Delhi NCR"],
+        "user_city": session.get("user_city", "Ankleshwar"),
+        "popular_cities": ["Ankleshwar", "Ankleshwar GIDC", "Station Road", "Rajpipla Road", "Valia Road", "Bharuch", "Surat", "Vadodara"],
         "featured_stores": featured_stores,
         "now_year": datetime.utcnow().year
     }
@@ -714,7 +713,7 @@ def home():
     min_price = request.args.get("min_price")
     max_price = request.args.get("max_price")
     sort_by = request.args.get("sort", "featured")
-    selected_city = request.args.get("city", session.get("user_city", "Bharuch"))
+    selected_city = request.args.get("city", session.get("user_city", "Ankleshwar"))
 
     products = search_products(
         query=query,
@@ -760,7 +759,7 @@ def home():
 
 @app.post("/set-location")
 def set_location():
-    city = request.form.get("city", "Bharuch").strip()
+    city = request.form.get("city", "Ankleshwar").strip()
     session["user_city"] = city
     session.modified = True
     flash(f"Delivery location set to {city}. Exploring nearby local stores & express delivery!", "info")
