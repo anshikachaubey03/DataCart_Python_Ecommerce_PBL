@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- Modern Commercial Hyperlocal Hero Banner -->
+<div class="hero-banner" style="background: linear-gradient(135deg, #0a0f1d 0%, #1e293b 50%, #0f172a 100%); border-radius:12px; padding:36px; margin-bottom:28px; border:1px solid #334155;">
+  <div class="hero-content" style="max-width:750px;">
+    <span class="hero-tag" style="background:#10b981; color:#ffffff; font-weight:800;">
+      ⚡ DIRECT FROM LOCAL MERCHANTS · {{ user_city|upper }}
+    </span>
+    <h1 style="font-size:36px; font-weight:900; line-height:1.2; margin:10px 0 14px; color:#ffffff;">
+      Shop from Verified Stores in <span style="color:#38bdf8;">{{ user_city }}</span>, Delivered in Hours!
+    </h1>
+    <p style="color:#cbd5e1; font-size:15px; margin-bottom:22px; line-height:1.6;">
+      Discover top electronics, audio, gadgets, and home essentials directly from trusted local retailers. 
+      Enjoy <strong>Same-Day Express Delivery</strong>, <strong>Direct WhatsApp Chat</strong>, and <strong>256-Bit Secure Payments</strong>.
+    </p>
+    <div class="hero-actions">
+      <a class="btn-amz-buy" style="max-width: 220px; font-size:14px; padding:10px 20px;" href="#localStores">
+        🏬 Explore Local Stores
+      </a>
+      <a class="btn-amz-secondary" style="background: rgba(255,255,255,0.1); color:#fff; border-color: rgba(255,255,255,0.3); font-size:14px; padding:10px 20px;" href="{{ url_for('offers') }}">
+        🎁 View Today's Deals
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Customer Intelligence Banner (Logged-In User Profile) -->
+{% if customer_profile and session.get('customer_id') %}
+  <div class="section-box" style="background: linear-gradient(135deg, #0f172a, #1e293b); color:#ffffff; border: 1px solid #334155; margin-bottom: 24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+      <div>
+        <span class="strip-badge">{{ customer_profile.segment }}</span>
+        <h3 style="margin-top:6px; font-size:18px;">Welcome back, {{ customer_profile.name }}!</h3>
+        <p style="color:#94a3b8; font-size:13px; margin-top:2px;">
+          Your Preferred Category: <strong style="color:#febd69;">{{ customer_profile.top_category }}</strong> · 
+          Delivering to <strong>{{ user_city }}</strong>
+        </p>
+      </div>
+      <div style="background:#091420; padding:12px 18px; border-radius:8px; border:1px solid #1e3a5f; text-align:right;">
+        <div style="font-size:11px; color:#94a3b8; text-transform:uppercase;">Your Active Coupon Voucher</div>
+        <div style="font-size:18px; font-weight:800; color:#febd69;">{{ customer_profile.personalized_offer.code }}</div>
+        <div style="font-size:12px; color:#a7d9ff;">Save {{ customer_profile.personalized_offer.discount_pct }}% on your order</div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<!-- Section 1: Discover Local Neighborhood Stores in User's City -->
+{% if local_stores %}
+<div class="section-box" id="localStores" style="background:#ffffff; border:1px solid #e2e8f0; margin-bottom:28px;">
+  <div class="section-header">
+    <div>
+      <h2 style="color:#0f172a;">🏬 Verified Local Stores in {{ user_city }}</h2>
+      <span class="sub-count" style="color:#64748b;">Order directly from nearby neighborhood merchants for fast doorstep delivery or store pickup</span>
+    </div>
+    <a href="{{ url_for('merchant_register') }}" style="color:#2563eb; font-weight:700; font-size:13px;">
+      + List Your Store Here →
+    </a>
+  </div>
+
+  <div class="local-stores-grid">
+    {% for s in local_stores %}
+      <div class="local-store-card">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="background:#ecfdf5; color:#065f46; font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px;">
+              ✓ VERIFIED
+            </span>
+            <span style="font-size:11px; color:#64748b;">📍 {{ s.city or user_city }}</span>
+          </div>
+
+          <h3 style="font-size:16px; font-weight:800; color:#0f172a; margin:0 0 4px;">
+            {{ s.store_name }}
+          </h3>
+          <p style="font-size:12px; color:#64748b; margin:0 0 12px; line-height:1.4;">
+            {{ s.address or 'Local Commercial Market' }}
+          </p>
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center; margin-top:12px; border-top:1px solid #f1f5f9; padding-top:12px;">
+          <a href="{{ url_for('store_page', mid=s.id) }}" class="btn-amz-secondary" style="flex:1; text-align:center; font-size:12px; padding:6px 10px;">
+            Visit Store
+          </a>
+          <a 
+            href="https://wa.me/{{ s.whatsapp or '919876543210' }}?text=Hello%20{{ s.store_name }},%20I%20am%20viewing%20your%20store%20on%20DataCart" 
+            target="_blank"
+            class="btn-amz-buy" 
+            style="background:#25d366; color:#fff; border:none; padding:6px 10px; font-size:12px;"
+            title="Chat on WhatsApp"
+          >
+            💬
+          </a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Category Spotlight Multi-Cards Grid -->
+<div class="category-tiles-grid">
+  <div class="category-tile-card">
+    <h3>Computers & Laptops</h3>
+    <img class="category-tile-img" src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&auto=format&fit=crop&q=80" alt="Computers">
+    <a class="category-tile-link" href="{{ url_for('home', category='Computers') }}">Shop Apple, HP & Laptops →</a>
+  </div>
+
+  <div class="category-tile-card">
+    <h3>Premium Audio & Headsets</h3>
+    <img class="category-tile-img" src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&auto=format&fit=crop&q=80" alt="Audio">
+    <a class="category-tile-link" href="{{ url_for('home', category='Audio') }}">Explore Sony & Wireless Audio →</a>
+  </div>
+
+  <div class="category-tile-card">
+    <h3>Smart Wearables & Tech</h3>
+    <img class="category-tile-img" src="https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=400&auto=format&fit=crop&q=80" alt="Wearables">
+    <a class="category-tile-link" href="{{ url_for('home', category='Wearables') }}">Browse Smart Watches →</a>
+  </div>
+
+  <div class="category-tile-card">
+    <h3>Gaming & Esports Gear</h3>
+    <img class="category-tile-img" src="https://images.unsplash.com/photo-1527814050087-73880490b435?w=400&auto=format&fit=crop&q=80" alt="Gaming">
+    <a class="category-tile-link" href="{{ url_for('home', category='Gaming') }}">Explore Razer & Mice →</a>
+  </div>
+</div>
+
+<!-- Personalized Recommendations (AI-Powered) -->
+{% if recs %}
+<div class="section-box">
+  <div class="section-header">
+    <div>
+      <h2>Recommended for You</h2>
+      <span class="sub-count">Curated products tailored to your preferences</span>
+    </div>
+    <span class="badge-flag choice" style="position:static;">Top Picks</span>
+  </div>
+
+  <div class="products-grid">
+    {% for p in recs %}
+      <div class="product-card">
+        {% if p.badge %}
+          <span class="badge-flag {% if 'Best' in p.badge %}bestseller{% elif 'Choice' in p.badge %}choice{% else %}deal{% endif %}">
+            {{ p.badge }}
+          </span>
+        {% endif %}
+
+        <a href="{{ url_for('product', pid=p.id) }}" class="product-img-wrapper">
+          <img class="product-img" src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
+        </a>
+
+        <div class="product-info">
+          <span class="product-category-tag">{{ p.category }}</span>
+          <a href="{{ url_for('product', pid=p.id) }}" class="product-title" title="{{ p.name }}">
+            {{ p.name }}
+          </a>
+
+          <div class="rating-row">
+            <span class="stars">★★★★★</span>
+            <span class="rating-count">★ {{ p.rating }} ({{ p.review_count }})</span>
+          </div>
+
+          <div class="price-row">
+            <span class="current-price"><span class="currency">₹</span>{{"{:,.0f}".format(p.price)}}</span>
+            {% if p.original_price > p.price %}
+              <span class="original-price">₹{{"{:,.0f}".format(p.original_price)}}</span>
+              <span class="discount-badge">Save {{ "%.0f"|format((p.original_price - p.price) / p.original_price * 100) }}%</span>
+            {% endif %}
+          </div>
+
+          <div class="prime-delivery-tag">⚡ Express Delivery in {{ user_city }}</div>
+          <div style="font-size:11px; color:#565959; margin-top:2px;">
+            Sold by: <span style="color:#007185; font-weight:700;">{{ p.store_name if 'store_name' in p.keys() and p.store_name else 'DataCart Direct' }}</span>
+          </div>
+
+          <div class="product-actions">
+            <form method="post" action="{{ url_for('add_cart', pid=p.id) }}" style="width:100%">
+              <button class="btn-amz-primary" type="submit">Add to Cart</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Today's Top Deals Section -->
+<div class="section-box">
+  <div class="section-header">
+    <div>
+      <h2>⚡ Today's Featured Deals in {{ user_city }}</h2>
+      <span class="sub-count">Limited time price drops with highest customer ratings</span>
+    </div>
+    <a href="{{ url_for('offers') }}" style="font-size:13px; font-weight:700; color:#2563eb;">See all deals →</a>
+  </div>
+
+  <div class="products-grid">
+    {% for p in deals %}
+      <div class="product-card">
+        <span class="badge-flag deal">Limited Time Deal</span>
+
+        <a href="{{ url_for('product', pid=p.id) }}" class="product-img-wrapper">
+          <img class="product-img" src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
+        </a>
+
+        <div class="product-info">
+          <span class="product-category-tag">{{ p.category }}</span>
+          <a href="{{ url_for('product', pid=p.id) }}" class="product-title" title="{{ p.name }}">
+            {{ p.name }}
+          </a>
+
+          <div class="rating-row">
+            <span class="stars">★★★★★</span>
+            <span class="rating-count">★ {{ p.rating }} ({{ p.review_count }})</span>
+          </div>
+
+          <div class="price-row">
+            <span class="current-price"><span class="currency">₹</span>{{"{:,.0f}".format(p.price)}}</span>
+            {% if p.original_price > p.price %}
+              <span class="original-price">₹{{"{:,.0f}".format(p.original_price)}}</span>
+              <span class="discount-badge">Save {{ "%.0f"|format((p.original_price - p.price) / p.original_price * 100) }}%</span>
+            {% endif %}
+          </div>
+
+          <div class="prime-delivery-tag">⚡ Express Delivery in {{ user_city }}</div>
+          <div style="font-size:11px; color:#565959; margin-top:2px;">
+            Sold by: <span style="color:#007185; font-weight:700;">{{ p.store_name if 'store_name' in p.keys() and p.store_name else 'DataCart Direct' }}</span>
+          </div>
+
+          <div class="product-actions">
+            <form method="post" action="{{ url_for('add_cart', pid=p.id) }}" style="width:100%">
+              <button class="btn-amz-primary" type="submit">Add to Cart</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Main Catalog Filter & Grid -->
+<div class="section-box" id="catalog">
+  <div class="section-header">
+    <div>
+      <h2>
+        {% if selected_category %}{{ selected_category }}{% else %}Explore Full Store Catalog{% endif %}
+      </h2>
+      <span class="sub-count">{{ products|length }} products available for delivery to {{ user_city }}</span>
+    </div>
+
+    <!-- Sorting Filter Dropdown -->
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:12px; color:var(--amz-muted);">Sort by:</span>
+      <form method="get" action="{{ url_for('home') }}" id="sortForm">
+        {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+        {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
+        <select name="sort" class="dark-input" style="background:#ffffff; color:#111; border:1px solid #ccc;" onchange="this.form.submit()">
+          <option value="featured" {% if sort_by == 'featured' %}selected{% endif %}>Featured</option>
+          <option value="price_low" {% if sort_by == 'price_low' %}selected{% endif %}>Price: Low to High</option>
+          <option value="price_high" {% if sort_by == 'price_high' %}selected{% endif %}>Price: High to Low</option>
+          <option value="rating" {% if sort_by == 'rating' %}selected{% endif %}>Avg. Customer Review</option>
+        </select>
+      </form>
+    </div>
+  </div>
+
+  <!-- Category Pills Filter -->
+  <div style="display:flex; gap:8px; margin-bottom:20px; overflow-x:auto; padding-bottom:6px;">
+    <a href="{{ url_for('home') }}" class="btn-amz-secondary" style="{% if not selected_category %}background:var(--amz-subnav); color:#fff; border-color:var(--amz-subnav);{% endif %}">
+      All Categories
+    </a>
+    {% for cat in categories %}
+      <a href="{{ url_for('home', category=cat) }}" class="btn-amz-secondary" style="{% if selected_category == cat %}background:var(--amz-subnav); color:#fff; border-color:var(--amz-subnav);{% endif %}">
+        {{ cat }}
+      </a>
+    {% endfor %}
+  </div>
+
+  <!-- Products Grid -->
+  {% if products %}
+    <div class="products-grid">
+      {% for p in products %}
+        <div class="product-card">
+          {% if p.badge %}
+            <span class="badge-flag {% if 'Best' in p.badge %}bestseller{% elif 'Choice' in p.badge %}choice{% else %}deal{% endif %}">
+              {{ p.badge }}
+            </span>
+          {% endif %}
+
+          <a href="{{ url_for('product', pid=p.id) }}" class="product-img-wrapper">
+            <img class="product-img" src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
+          </a>
+
+          <div class="product-info">
+            <span class="product-category-tag">{{ p.category }}</span>
+            <a href="{{ url_for('product', pid=p.id) }}" class="product-title" title="{{ p.name }}">
+              {{ p.name }}
+            </a>
+
+            <div class="rating-row">
+              <span class="stars">★★★★★</span>
+              <span class="rating-count">★ {{ p.rating }} ({{ p.review_count }})</span>
+            </div>
+
+            <div class="price-row">
+              <span class="current-price"><span class="currency">₹</span>{{"{:,.0f}".format(p.price)}}</span>
+              {% if p.original_price > p.price %}
+                <span class="original-price">₹{{"{:,.0f}".format(p.original_price)}}</span>
+                <span class="discount-badge">{{ "%.0f"|format((p.original_price - p.price) / p.original_price * 100) }}% off</span>
+              {% endif %}
+            </div>
+
+            <div class="prime-delivery-tag">⚡ Express Delivery in {{ user_city }}</div>
+            <div style="font-size:11px; color:#565959; margin-top:2px;">
+              Sold by: <span style="color:#007185; font-weight:700;">{{ p.store_name if 'store_name' in p.keys() and p.store_name else 'DataCart Direct' }}</span>
+            </div>
+
+            <div class="product-actions">
+              <form method="post" action="{{ url_for('add_cart', pid=p.id) }}" style="width:100%">
+                <button class="btn-amz-primary" type="submit">Add to Cart</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div style="text-align:center; padding:50px 20px; background:#fafafa; border-radius:8px; border:1px dashed #ccc;">
+      <h3>No products matched your search</h3>
+      <p style="color:var(--amz-muted); margin-top:6px;">Try adjusting your search terms or view our complete catalog.</p>
+      <a href="{{ url_for('home') }}" class="btn-amz-primary" style="display:inline-block; margin-top:14px; max-width:200px;">
+        View All Products
+      </a>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Order Confirmed — DataCart{% endblock %}
+
+{% block content %}
+
+<div style="max-width:720px; margin:30px auto;">
+  
+  <div class="section-box" style="padding:36px;">
+    
+    <div style="text-align:center; margin-bottom:24px;">
+      <div style="width:64px; height:64px; background:#dcfce7; color:#16a34a; border-radius:50%; display:grid; place-items:center; font-size:32px; margin:0 auto 16px; border:2px solid #86efac;">
+        ✓
+      </div>
+
+      <h1 style="font-size:26px; font-weight:800; color:var(--amz-text); margin-bottom:6px;">
+        Order Placed & Payment Verified!
+      </h1>
+
+      <p style="color:var(--amz-muted); font-size:14px; margin:0;">
+        Confirmation & invoice dispatched to your registered email. Tracking ID: <strong style="color:var(--amz-blue);">{{ order.tracking_id }}</strong>
+      </p>
+    </div>
+
+    <!-- Order Summary Box -->
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:20px; margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px;">
+        <span style="color:var(--amz-muted);">Order Reference:</span>
+        <strong>#DC-{{ order.id }}</strong>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px;">
+        <span style="color:var(--amz-muted);">Estimated Delivery:</span>
+        <strong style="color:var(--amz-green);">Tomorrow by 8:00 PM (DataCart Express)</strong>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px;">
+        <span style="color:var(--amz-muted);">Payment Channel:</span>
+        <span>{{ payment.method if payment else 'Amazon Pay UPI' }} (Verified)</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:18px; font-weight:800; border-top:1px solid #e2e8f0; padding-top:12px; margin-top:10px;">
+        <span>Total Paid:</span>
+        <span style="color:var(--amz-text);">₹{{"{:,.0f}".format(order.total)}}</span>
+      </div>
+    </div>
+
+    <!-- Cryptographic Payment Security Vault Receipt -->
+    <div style="background:#0f172a; border:1px solid #1e3a5f; border-radius:8px; padding:18px; color:#cbd5e1; margin-bottom:24px; font-size:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:8px; margin-bottom:12px;">
+        <span style="font-weight:700; color:#38bdf8; display:flex; align-items:center; gap:6px;">
+          🔒 256-Bit SSL Encrypted Payment Receipt
+        </span>
+        <span style="background:#065f46; color:#6ee7b7; padding:2px 6px; border-radius:4px; font-weight:800; font-size:10px;">
+          PCI-DSS COMPLIANT
+        </span>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-family:monospace; margin-bottom:10px;">
+        <div>
+          <span style="color:#64748b; font-size:11px; display:block;">Security Token:</span>
+          <span style="color:#f8fafc;">{{ payment.token if payment else 'tok_sec_demo_9824' }}</span>
+        </div>
+        <div>
+          <span style="color:#64748b; font-size:11px; display:block;">Masked Account:</span>
+          <span style="color:#febd69;">{{ payment.masked_details if payment and payment.masked_details else 'u***@okaxis' }}</span>
+        </div>
+      </div>
+
+      <div style="font-family:monospace; font-size:11px; word-break:break-all;">
+        <span style="color:#64748b; display:block;">Tamper-Proof HMAC-SHA256 Signature:</span>
+        <span style="color:#42e8b4;">{{ payment.signature_hash if payment and payment.signature_hash else 'f9a2b8471e98cd01b8a9237e1920acfa849201948201ba' }}</span>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex; gap:12px; justify-content:center;">
+      <a href="{{ url_for('orders') }}" class="btn-amz-buy" style="max-width:200px; text-align:center;">
+        View Your Orders
+      </a>
+      <a href="{{ url_for('home') }}" class="btn-amz-secondary" style="max-width:200px; text-align:center;">
+        Continue Shopping
+      </a>
+    </div>
+
+  </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}{{ merchant.store_name }} — Local Storefront | DataCart{% endblock %}
+
+{% block content %}
+
+<div style="max-width:1200px; margin:0 auto;">
+  
+  <!-- Merchant Store Banner Header -->
+  <div class="hero-banner" style="background:linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%); padding:32px; border-radius:12px; margin-bottom:24px; border:1px solid #334155;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+      <div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="background:#10b981; color:#fff; font-size:11px; font-weight:800; padding:3px 8px; border-radius:4px;">
+            ✓ VERIFIED LOCAL MERCHANT
+          </span>
+          <span style="color:#94a3b8; font-size:12px;">📍 {{ merchant.city or 'Bharuch' }}</span>
+        </div>
+
+        <h1 style="font-size:32px; font-weight:900; color:#fff; margin:0 0 6px;">
+          🏬 {{ merchant.store_name }}
+        </h1>
+        <p style="color:#cbd5e1; font-size:14px; margin:0;">
+          Managed by <strong>{{ merchant.name }}</strong> · {{ merchant.address or 'Local Commercial Market' }}
+        </p>
+      </div>
+
+      <div style="display:flex; gap:12px; align-items:center;">
+        <a 
+          href="https://wa.me/{{ merchant.whatsapp or '919876543210' }}?text=Hello%20{{ merchant.store_name }},%20I%20am%20viewing%20your%20store%20on%20DataCart" 
+          target="_blank"
+          class="btn-amz-buy" 
+          style="background:#25d366; color:#fff; border:none; display:flex; align-items:center; gap:8px; font-weight:700;"
+        >
+          💬 Chat with Store on WhatsApp
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Store Inventory Grid -->
+  <div class="section-box">
+    <div class="section-header">
+      <div>
+        <h2>Products by {{ merchant.store_name }}</h2>
+        <span class="sub-count">{{ products|length }} active items in stock for express local delivery</span>
+      </div>
+    </div>
+
+    {% if products %}
+      <div class="products-grid">
+        {% for p in products %}
+          <div class="product-card">
+            {% if p.badge %}
+              <span class="badge-flag bestseller">{{ p.badge }}</span>
+            {% endif %}
+
+            <a href="{{ url_for('product', pid=p.id) }}" class="product-img-wrapper">
+              <img class="product-img" src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
+            </a>
+
+            <div class="product-info">
+              <span class="product-category-tag">{{ p.category }}</span>
+              <a href="{{ url_for('product', pid=p.id) }}" class="product-title">
+                {{ p.name }}
+              </a>
+
+              <div class="rating-row">
+                <span class="stars">★★★★★</span>
+                <span class="rating-count">★ {{ p.rating }} ({{ p.review_count }})</span>
+              </div>
+
+              <div class="price-row">
+                <span class="current-price"><span class="currency">₹</span>{{"{:,.0f}".format(p.price)}}</span>
+                {% if p.original_price > p.price %}
+                  <span class="original-price">₹{{"{:,.0f}".format(p.original_price)}}</span>
+                {% endif %}
+              </div>
+
+              <div class="prime-delivery-tag" style="color:#059669;">
+                ⚡ Same-Day Delivery in {{ merchant.city or 'Bharuch' }}
+              </div>
+
+              <div class="product-actions">
+                <form method="post" action="{{ url_for('add_cart', pid=p.id) }}" style="width:100%">
+                  <button class="btn-amz-primary" type="submit">Add to Cart</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="text-align:center; padding:40px;">
+        <p style="color:#64748b;">This store currently has no active listings.</p>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endblock %}

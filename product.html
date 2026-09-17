@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} — DataCart{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb Navigation -->
+<div style="font-size:12px; color:var(--amz-muted); margin-bottom:14px;">
+  <a href="{{ url_for('home') }}">Home</a> › 
+  <a href="{{ url_for('home', category=product.category) }}">{{ product.category }}</a> › 
+  <span>{{ product.name[:40] }}...</span>
+</div>
+
+<!-- 3-Column Product Detail Layout -->
+<div class="product-detail-layout">
+  
+  <!-- Col 1: High-Res Product Image -->
+  <div class="detail-img-box">
+    <img src="{{ product.image_url }}" alt="{{ product.name }}" id="mainProductImg">
+  </div>
+
+  <!-- Col 2: Specifications & Highlights -->
+  <div class="detail-info-col">
+    {% if product.badge %}
+      <span class="badge-flag choice" style="position:static; display:inline-block; margin-bottom:8px;">
+        {{ product.badge }}
+      </span>
+    {% endif %}
+
+    <h1>{{ product.name }}</h1>
+    
+    <div class="rating-row" style="margin: 10px 0;">
+      <span class="stars">★★★★★</span>
+      <span style="font-weight:700; color:var(--amz-text);">★ {{ product.rating }} out of 5</span>
+      <span class="rating-count">({{ product.review_count }} global ratings)</span>
+    </div>
+
+    <div style="border-top: 1px solid var(--amz-border-subtle); border-bottom: 1px solid var(--amz-border-subtle); padding: 14px 0; margin: 12px 0;">
+      <div class="price-row" style="margin-bottom:6px;">
+        {% if product.original_price > product.price %}
+          <span style="color:var(--amz-deal-red); font-size:24px; font-weight:400;">
+            -{{ "%.0f"|format((product.original_price - product.price) / product.original_price * 100) }}%
+          </span>
+        {% endif %}
+        <span class="current-price" style="font-size:28px;">
+          <span class="currency">₹</span>{{"{:,.0f}".format(product.price)}}
+        </span>
+      </div>
+      {% if product.original_price > product.price %}
+        <div style="font-size:13px; color:var(--amz-muted);">
+          Typical price: <span style="text-decoration:line-through;">₹{{"{:,.0f}".format(product.original_price)}}</span>
+        </div>
+      {% endif %}
+      <div style="font-size:12px; color:var(--amz-muted); margin-top:4px;">
+        Inclusive of all taxes. EMI starts at ₹{{"{:,.0f}".format(product.price / 6)}}/month.
+      </div>
+    </div>
+
+    <!-- Product Features Bullet Points -->
+    <div style="margin-top: 16px;">
+      <h3 style="font-size:15px; font-weight:700; margin-bottom:8px;">About this item:</h3>
+      <p style="color:var(--amz-text); line-height:1.7; font-size:14px;">
+        {{ product.description }}
+      </p>
+      
+      <ul style="margin: 14px 0 14px 20px; font-size:13px; color:#333; line-height:1.8;">
+        <li><strong>Category:</strong> {{ product.category }}</li>
+        <li><strong>Inventory Status:</strong> In Stock ({{ product.stock }} units available for fast dispatch)</li>
+        <li><strong>Local Delivery:</strong> Same-Day / Next-Day Delivery available in {{ user_city }}</li>
+        <li><strong>Warranty & Returns:</strong> 1 Year Official Manufacturer Warranty with 7 Days Easy Replacement</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Col 3: Buy Box Sidebar -->
+  <div class="detail-buy-box">
+    <div style="font-size:24px; font-weight:800; color:var(--amz-text); margin-bottom:8px;">
+      ₹{{"{:,.0f}".format(product.price)}}
+    </div>
+
+    <div class="prime-delivery-tag" style="font-size:13px; margin-bottom:8px;">
+      ⚡ Express Delivery in <strong>{{ user_city }}</strong>. Order within 4 hrs.
+    </div>
+
+    <div style="font-size:12px; color:var(--amz-muted); margin-bottom:12px;">
+      📍 Delivering to <strong>{{ user_city }}</strong>
+    </div>
+
+    {% if product.stock > 0 %}
+      <div class="stock-status">In Stock</div>
+      
+      <form method="post" action="{{ url_for('add_cart', pid=product.id) }}">
+        <div style="margin-bottom:14px;">
+          <label style="font-size:12px; color:var(--amz-muted); display:block; margin-bottom:4px;">Quantity:</label>
+          <select name="quantity" class="dark-input" style="background:#fff; color:#111; border:1px solid #ccc; width:100%; padding:6px 10px;">
+            {% for q in range(1, [product.stock + 1, 6]|min) %}
+              <option value="{{ q }}">{{ q }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <button type="submit" class="btn-amz-primary" style="margin-bottom:8px;">
+          Add to Cart
+        </button>
+      </form>
+
+      <form method="post" action="{{ url_for('add_cart', pid=product.id) }}">
+        <input type="hidden" name="quantity" value="1">
+        <button type="submit" class="btn-amz-buy" style="margin-bottom:8px;">
+          Buy Now (Doorstep Delivery)
+        </button>
+      </form>
+
+      <!-- 24-Hour Zero-Advance Store Pickup Hold -->
+      <a 
+        href="{{ url_for('reserve_product', pid=product.id) }}"
+        class="btn-amz-secondary" 
+        style="display:block; text-align:center; background:#f0fdf4; color:#15803d; border:1px solid #86efac; font-weight:700; padding:10px; font-size:13px; text-decoration:none; margin-bottom:8px; border-radius:8px;"
+      >
+        🏪 Hold for Store Pickup (Pay ₹0 Now)
+      </a>
+
+      <!-- Direct WhatsApp Merchant Connect -->
+      <div style="margin-top:4px;">
+        <a 
+          href="https://wa.me/{{ product.whatsapp_number if 'whatsapp_number' in product.keys() and product.whatsapp_number else '919876543210' }}?text=Hello,%20I%20am%20interested%20in%20buying%20{{ product.name }}%20(Price:%20INR%20{{ product.price }})%20on%20DataCart" 
+          target="_blank"
+          class="btn-amz-secondary"
+          style="background:#25d366; color:#ffffff; border:none; width:100%; display:flex; justify-content:center; align-items:center; gap:8px; font-weight:700; padding:10px; font-size:12px; text-decoration:none; border-radius:8px;"
+        >
+          💬 Chat with Seller on WhatsApp
+        </a>
+      </div>
+    {% else %}
+      <div style="color:var(--amz-deal-red); font-weight:700; font-size:16px; margin:16px 0;">
+        Currently Out of Stock
+      </div>
+    {% endif %}
+
+    <div style="font-size:11px; color:var(--amz-muted); margin-top:14px; border-top:1px solid var(--amz-border-subtle); padding-top:12px; line-height:1.6;">
+      🔒 256-Bit SSL Encrypted Payment<br>
+      ⚡ Ships from <strong>DataCart Local Express</strong><br>
+      🏬 Sold by <a href="{{ url_for('store_page', mid=product.merchant_id) if 'merchant_id' in product.keys() and product.merchant_id else '#' }}" style="color:var(--amz-blue); font-weight:700;">{{ product.store_name if 'store_name' in product.keys() and product.store_name else 'DataCart Direct' }}</a> (Verified Merchant)<br>
+      📍 Store Address: <strong>{{ product.store_address if 'store_address' in product.keys() and product.store_address else user_city }}</strong>
+    </div>
+  </div>
+
+</div>
+
+<!-- Market Basket Analysis: Frequently Bought Together Bundle Box -->
+{% if companion_product and bundle_rule %}
+<div class="frequently-bought-together-box">
+  <div class="fbt-header">
+    <h3>Frequently Bought Together</h3>
+    <span class="fbt-badge">⚡ Market Basket AI Bundle (Lift: {{ bundle_rule.lift }}x)</span>
+  </div>
+
+  <div class="fbt-body">
+    
+    <!-- Items Row -->
+    <div class="fbt-items-row">
+      
+      <!-- Main Product -->
+      <div class="fbt-item-card">
+        <img class="fbt-item-img" src="{{ product.image_url }}" alt="{{ product.name }}">
+        <div class="fbt-item-title">{{ product.name[:35] }}...</div>
+        <div style="font-weight:700; font-size:13px; margin-top:4px;">₹{{"{:,.0f}".format(product.price)}}</div>
+      </div>
+
+      <div class="fbt-plus-icon">+</div>
+
+      <!-- Associated Companion Product -->
+      <div class="fbt-item-card">
+        <a href="{{ url_for('product', pid=companion_product.id) }}">
+          <img class="fbt-item-img" src="{{ companion_product.image_url }}" alt="{{ companion_product.name }}">
+          <div class="fbt-item-title">{{ companion_product.name[:35] }}...</div>
+        </a>
+        <div style="font-weight:700; font-size:13px; margin-top:4px;">₹{{"{:,.0f}".format(companion_product.price)}}</div>
+      </div>
+
+    </div>
+
+    <!-- Pricing & Bundle Action Card -->
+    <div class="fbt-pricing-card">
+      <div style="font-size:12px; color:var(--amz-muted); margin-bottom:4px;">Total bundle price:</div>
+      <div class="combo-total">
+        ₹{{"{:,.0f}".format(bundle_rule.combo_price)}} 
+        <span style="font-size:13px; text-decoration:line-through; color:var(--amz-muted); font-weight:400;">
+          ₹{{"{:,.0f}".format(product.price + companion_product.price)}}
+        </span>
+      </div>
+      <div class="combo-savings">
+        Save ₹{{"{:,.0f}".format(bundle_rule.savings)}} (10% Association Bundle Discount)
+      </div>
+
+      <form method="post" action="{{ url_for('add_bundle') }}">
+        <input type="hidden" name="p1_id" value="{{ product.id }}">
+        <input type="hidden" name="p2_id" value="{{ companion_product.id }}">
+        <button type="submit" class="btn-amz-buy">
+          Add Both to Cart
+        </button>
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endif %}
+
+<!-- Customer Reviews & Rating Breakdown -->
+<div class="section-box">
+  <div class="section-header">
+    <h2>Customer Reviews & Ratings</h2>
+    <span class="sub-count">{{ reviews|length }} verified reviews</span>
+  </div>
+
+  <div style="display:grid; grid-template-columns: 280px 1fr; gap:30px;">
+    
+    <!-- Rating Breakdown Summary -->
+    <div>
+      <div style="display:flex; align-items:baseline; gap:8px; margin-bottom:8px;">
+        <span style="font-size:36px; font-weight:800;">{{ product.rating }}</span>
+        <span style="color:var(--amz-muted);">out of 5</span>
+      </div>
+      <div class="stars" style="font-size:18px; margin-bottom:12px;">★★★★★</div>
+      <p style="font-size:12px; color:var(--amz-muted); line-height:1.6;">
+        DataCart customer reviews are verified purchases logged in the telemetry database.
+      </p>
+    </div>
+
+    <!-- Reviews List -->
+    <div>
+      {% if reviews %}
+        {% for r in reviews %}
+          <div style="border-bottom:1px solid var(--amz-border-subtle); padding-bottom:16px; margin-bottom:16px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <div style="width:28px; height:28px; border-radius:50%; background:#e2e8f0; display:grid; place-items:center; font-size:12px; font-weight:700;">
+                {{ r.customer_name[0] }}
+              </div>
+              <span style="font-weight:700; font-size:13px;">{{ r.customer_name }}</span>
+              <span style="font-size:11px; color:var(--amz-green); font-weight:600;">✓ Verified Purchase</span>
+            </div>
+            <div class="rating-row" style="margin-bottom:4px;">
+              <span class="stars">★★★★★</span>
+              <strong style="font-size:13px;">{{ r.title }}</strong>
+            </div>
+            <div style="font-size:11px; color:var(--amz-muted); margin-bottom:8px;">Reviewed on {{ r.created_at }}</div>
+            <p style="font-size:13px; color:var(--amz-text); line-height:1.6;">{{ r.comment }}</p>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p style="color:var(--amz-muted); font-size:13px;">No customer reviews yet for this product. Be the first to purchase and review!</p>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

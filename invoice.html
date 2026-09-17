@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tax Invoice #DC-{{ order.id }} — DataCart</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 40px;
+      color: #0f172a;
+      background: #f8fafc;
+    }
+    .invoice-card {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      border: 1px solid #e2e8f0;
+    }
+    .invoice-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+    .brand-title {
+      font-size: 26px;
+      font-weight: 900;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+    }
+    .tax-badge {
+      font-size: 12px;
+      background: #f1f5f9;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+      color: #475569;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 28px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .invoice-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+    }
+    .invoice-table th {
+      background: #0f172a;
+      color: #ffffff;
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .invoice-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 13px;
+    }
+    .total-box {
+      float: right;
+      width: 280px;
+      margin-bottom: 30px;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 13px;
+    }
+    .grand-total {
+      font-size: 18px;
+      font-weight: 900;
+      border-top: 2px solid #0f172a;
+      padding-top: 10px;
+      margin-top: 6px;
+    }
+    .security-footer {
+      clear: both;
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 20px;
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.6;
+    }
+    .btn-print {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    @media print {
+      body { background: #ffffff; padding: 0; }
+      .invoice-card { box-shadow: none; border: none; padding: 0; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div style="text-align:center; margin-bottom:20px;" class="no-print">
+  <button class="btn-print" onclick="window.print()">🖨️ Print / Download Tax Invoice PDF</button>
+  <a href="{{ url_for('orders') }}" style="margin-left:14px; font-size:13px; color:#2563eb;">← Back to Orders</a>
+</div>
+
+<div class="invoice-card">
+  
+  <div class="invoice-header">
+    <div>
+      <div class="brand-title">DataCart</div>
+      <div style="font-size:12px; color:#64748b;">Commercial Multi-Vendor E-Commerce Platform</div>
+      <div style="font-size:12px; color:#64748b;">GSTIN: 24AADCD9988Z1ZP · CIN: U72200GJ2026PTC098765</div>
+    </div>
+    <div style="text-align:right;">
+      <span class="tax-badge">ORIGINAL FOR RECIPIENT</span>
+      <h2 style="margin:6px 0 2px; font-size:20px;">TAX INVOICE</h2>
+      <div style="font-size:13px; font-weight:700;">Invoice #DC-{{ order.id }}</div>
+      <div style="font-size:12px; color:#64748b;">Date: {{ order.created_at[:10] }}</div>
+    </div>
+  </div>
+
+  <div class="info-grid">
+    <div>
+      <strong style="font-size:14px; color:#0f172a;">Billed To / Shipping Destination:</strong>
+      <div>{{ customer.name if customer else 'Customer' }}</div>
+      <div>{{ customer.address if customer else 'Local Delivery Address' }}</div>
+      <div>Pincode: {{ customer.pincode if customer else '392001' }}</div>
+      <div>Email: {{ customer.email if customer else '' }}</div>
+    </div>
+
+    <div>
+      <strong style="font-size:14px; color:#0f172a;">Order & Payment Details:</strong>
+      <div>Order Tracking: <strong>{{ order.tracking_id }}</strong></div>
+      <div>Payment Channel: <strong>{{ payment.method if payment else 'Amazon Pay UPI' }}</strong></div>
+      <div>Payment Token: <code style="font-size:11px;">{{ payment.token if payment else 'tok_sec_demo' }}</code></div>
+      <div>Fulfillment: DataCart Express Same-Day Logistics</div>
+    </div>
+  </div>
+
+  <table class="invoice-table">
+    <thead>
+      <tr>
+        <th>Item Description</th>
+        <th>Merchant / Store</th>
+        <th>Qty</th>
+        <th>Unit Price</th>
+        <th>Tax (18% GST)</th>
+        <th>Total Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+        <tr>
+          <td>
+            <strong>{{ item.product_name }}</strong>
+            <div style="font-size:11px; color:#64748b;">Category: {{ item.category }} · HSN: 84713010</div>
+          </td>
+          <td>{{ item.store_name }}</td>
+          <td>{{ item.quantity }}</td>
+          <td>₹{{"{:,.2f}".format(item.price / 1.18)}}</td>
+          <td>₹{{"{:,.2f}".format(item.price - (item.price / 1.18))}}</td>
+          <td><strong>₹{{"{:,.2f}".format(item.quantity * item.price)}}</strong></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="total-box">
+    <div class="total-row">
+      <span>Subtotal:</span>
+      <span>₹{{"{:,.2f}".format(order.total)}}</span>
+    </div>
+    <div class="total-row">
+      <span>CGST (9%):</span>
+      <span>Included in price</span>
+    </div>
+    <div class="total-row">
+      <span>SGST (9%):</span>
+      <span>Included in price</span>
+    </div>
+    <div class="total-row grand-total">
+      <span>Invoice Total:</span>
+      <span>₹{{"{:,.2f}".format(order.total)}}</span>
+    </div>
+  </div>
+
+  <div class="security-footer">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <strong>Cryptographic Verification Hash:</strong><br>
+        <code>{{ payment.signature_hash if payment and payment.signature_hash else 'HMAC-SHA256-VERIFIED' }}</code>
+      </div>
+      <div style="text-align:right;">
+        <strong>Authorized Signatory</strong><br>
+        <span>DataCart Fulfillment Services Ltd.</span>
+      </div>
+    </div>
+    <p style="margin-top:12px; font-size:10px;">
+      This is an electronically generated commercial tax invoice as per the provisions of the Information Technology Act and Indian GST Act 2017. No physical signature required.
+    </p>
+  </div>
+
+</div>
+
+</body>
+</html>

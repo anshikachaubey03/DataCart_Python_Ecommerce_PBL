@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Amazon Seller Central — {{ merchant_store_name }}{% endblock %}
+
+{% block content %}
+
+<div style="max-width:1200px; margin:0 auto;">
+  
+  <!-- Merchant Central Header Banner -->
+  <div class="hero-banner" style="background:linear-gradient(135deg, #131921 0%, #232f3e 100%); padding:28px 32px; margin-bottom:24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+      <div>
+        <span class="hero-tag" style="background:#febd69; color:#111;">📦 DataCart Seller Central</span>
+        <h1 style="font-size:28px; margin:6px 0;">{{ merchant_store_name }}</h1>
+        <p style="color:#cbd5e1; font-size:13px; margin:0;">
+          Logged in as <strong>{{ merchant_name }}</strong> · Live Merchant Marketplace Selling Hub
+        </p>
+      </div>
+
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <a href="{{ url_for('store_page', mid=session['merchant_id']) }}" target="_blank" class="btn-amz-secondary" style="font-size:12px; background:#10b981; color:#fff; border:none; padding:8px 14px; font-weight:700;">
+          🏬 View Public Storefront
+        </a>
+        <a href="{{ url_for('merchant_add_product') }}" class="btn-amz-buy" style="font-size:13px; padding:10px 20px;">
+          ➕ Add New Product
+        </a>
+        <a href="{{ url_for('merchant_logout') }}" class="btn-amz-secondary" style="font-size:12px; background:rgba(255,255,255,0.1); color:#fff; border-color:rgba(255,255,255,0.2);">
+          Sign Out
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Merchant KPI Cards -->
+  <div class="kpi-cards-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom:24px;">
+    
+    <div class="kpi-card" style="background:#fff; border:1px solid #e7e7e7; color:#111;">
+      <span class="kpi-label" style="color:#565959;">Total Store Revenue</span>
+      <span class="kpi-val" style="color:#0f1111;">₹{{"{:,.0f}".format(total_sales)}}</span>
+      <span class="kpi-sub" style="color:#007185;">Across {{ total_units_sold }} units sold</span>
+    </div>
+
+    <div class="kpi-card" style="background:#fff; border:1px solid #e7e7e7; color:#111;">
+      <span class="kpi-label" style="color:#565959;">Units Sold</span>
+      <span class="kpi-val" style="color:#0f1111;">{{ total_units_sold }}</span>
+      <span class="kpi-sub" style="color:#067d62;">Live customer checkouts</span>
+    </div>
+
+    <div class="kpi-card" style="background:#fff; border:1px solid #e7e7e7; color:#111;">
+      <span class="kpi-label" style="color:#565959;">Active Product Listings</span>
+      <span class="kpi-val" style="color:#0f1111;">{{ total_listings }}</span>
+      <span class="kpi-sub" style="color:#007185;">Live on DataCart catalog</span>
+    </div>
+
+    <div class="kpi-card" style="background:#fff; border:1px solid #e7e7e7; color:#111;">
+      <span class="kpi-label" style="color:#565959;">Pending Orders</span>
+      <span class="kpi-val" style="color:{% if pending_orders > 0 %}#cc0c39{% else %}#067d62{% endif %};">{{ pending_orders }}</span>
+      <span class="kpi-sub" style="color:#565959;">Requires dispatch/shipping</span>
+    </div>
+
+  </div>
+
+  <!-- Counter 24-Hour Pickup OTP Verification Box -->
+  <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius:12px; padding:20px 24px; margin-bottom:24px; color:#ffffff; border:1px solid #334155; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+    <div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="background:#10b981; color:#fff; font-size:10px; font-weight:800; padding:2px 8px; border-radius:4px;">
+          STORE COUNTER
+        </span>
+        <h3 style="font-size:17px; font-weight:800; margin:0; color:#fff;">Verify Customer Pickup OTP</h3>
+      </div>
+      <p style="color:#94a3b8; font-size:13px; margin:4px 0 0;">Customer at your showroom counter? Enter their 6-digit OTP to complete handover.</p>
+    </div>
+    
+    <form method="post" action="{{ url_for('merchant_verify_pickup_otp') }}" style="display:flex; gap:10px; align-items:center;">
+      <input 
+        type="text" 
+        name="otp" 
+        placeholder="6-Digit OTP (e.g. 582910)" 
+        required 
+        maxlength="6"
+        style="background:#091420; border:1px solid #3b82f6; color:#38bdf8; font-size:18px; font-weight:800; letter-spacing:2px; padding:8px 14px; border-radius:6px; width:220px; text-align:center;"
+      >
+      <button type="submit" class="btn-amz-buy" style="background:#10b981; color:#fff; border:none; padding:10px 18px; font-size:13px; font-weight:800; cursor:pointer;">
+        ✓ Verify & Complete Pickup
+      </button>
+    </form>
+  </div>
+
+  <!-- Section 1: Merchant's Active Product Listings Table -->
+  <div class="section-box" style="margin-bottom:24px;">
+    <div class="section-header">
+      <div>
+        <h2>Your Store Inventory & Product Listings</h2>
+        <span class="sub-count">{{ products|length }} active items ready for real-time customer purchase</span>
+      </div>
+      <a href="{{ url_for('merchant_add_product') }}" class="btn-amz-primary" style="font-size:12px; padding:6px 14px; color:#111;">
+        + List New Item
+      </a>
+    </div>
+
+    {% if products %}
+      <div style="overflow-x:auto;">
+        <table class="dark-table" style="background:#fff; color:#111; border:1px solid #e7e7e7;">
+          <thead>
+            <tr style="background:#f0f2f2; color:#565959;">
+              <th style="padding:10px 14px; border-bottom:1px solid #d5d9d9;">Product Details</th>
+              <th style="padding:10px 14px; border-bottom:1px solid #d5d9d9;">Category</th>
+              <th style="padding:10px 14px; border-bottom:1px solid #d5d9d9;">Live Price (₹)</th>
+              <th style="padding:10px 14px; border-bottom:1px solid #d5d9d9;">Inventory Stock</th>
+              <th style="padding:10px 14px; border-bottom:1px solid #d5d9d9;">Badge</th>
+              <th style="padding:10px 14px; border-bottom:1px solid #d5d9d9;">Update Inventory</th>
+              <th style="padding:10px 14px; border-bottom:1px solid #d5d9d9;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in products %}
+              <tr style="border-bottom:1px solid #eee;">
+                <td style="padding:12px 14px; color:#111;">
+                  <div style="display:flex; align-items:center; gap:12px;">
+                    <img src="{{ p.image_url }}" alt="{{ p.name }}" style="width:50px; height:50px; object-fit:contain; border:1px solid #eee; border-radius:4px; padding:2px;">
+                    <div>
+                      <a href="{{ url_for('product', pid=p.id) }}" style="font-weight:700; color:var(--amz-blue);" target="_blank">
+                        {{ p.name }}
+                      </a>
+                      <div style="font-size:11px; color:#565959;">Item ID: #{{ p.id }} · Rating: ★ {{ p.rating }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td style="padding:12px 14px; color:#111;">
+                  <span class="product-category-tag" style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">{{ p.category }}</span>
+                </td>
+                <td style="padding:12px 14px; font-weight:700; color:#111;">
+                  ₹{{"{:,.0f}".format(p.price)}}
+                </td>
+                <td style="padding:12px 14px;">
+                  <span style="font-weight:800; color:{% if p.stock <= 5 %}#cc0c39{% else %}#067d62{% endif %};">
+                    {{ p.stock }} units
+                  </span>
+                </td>
+                <td style="padding:12px 14px;">
+                  {% if p.badge %}
+                    <span class="badge-flag choice" style="position:static; display:inline-block;">{{ p.badge }}</span>
+                  {% else %}
+                    <span style="color:#94a3b8; font-size:11px;">None</span>
+                  {% endif %}
+                </td>
+                <td style="padding:12px 14px;">
+                  <!-- Fast inline price & stock update -->
+                  <form method="post" action="{{ url_for('merchant_edit_product', pid=p.id) }}" style="display:flex; gap:6px; align-items:center;">
+                    <input type="number" name="price" value="{{ p.price|int }}" style="width:70px; padding:4px 6px; font-size:12px; border:1px solid #ccc; border-radius:4px;" title="Price">
+                    <input type="number" name="stock" value="{{ p.stock }}" style="width:50px; padding:4px 6px; font-size:12px; border:1px solid #ccc; border-radius:4px;" title="Stock">
+                    <button type="submit" class="btn-amz-secondary" style="padding:4px 8px; font-size:11px;">Save</button>
+                  </form>
+                </td>
+                <td style="padding:12px 14px;">
+                  <form method="post" action="{{ url_for('merchant_delete_product', pid=p.id) }}" onsubmit="return confirm('Remove product from storefront?');">
+                    <button type="submit" style="background:none; border:none; color:#cc0c39; font-size:12px; font-weight:700; cursor:pointer;">
+                      Delete
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div style="text-align:center; padding:40px; background:#fafafa; border-radius:8px; border:1px dashed #ccc;">
+        <h3>You have not listed any products yet</h3>
+        <p style="color:#565959; margin:6px 0 16px; font-size:13px;">Add your first product to start selling live to customers in real-time!</p>
+        <a href="{{ url_for('merchant_add_product') }}" class="btn-amz-buy" style="display:inline-block; max-width:200px;">
+          List First Product
+        </a>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Section 2: Real-Time Incoming Customer Orders -->
+  <div class="section-box">
+    <div class="section-header">
+      <div>
+        <h2>Real-Time Customer Orders & Fulfillment</h2>
+        <span class="sub-count">Orders placed by customers for your store's products</span>
+      </div>
+    </div>
+
+    {% if orders %}
+      <div style="overflow-x:auto;">
+        <table class="dark-table" style="background:#fff; color:#111; border:1px solid #e7e7e7;">
+          <thead>
+            <tr style="background:#f0f2f2; color:#565959;">
+              <th style="padding:10px 14px; border-bottom:1px solid #d5d9d9;">Order ID & Date</th>
+              <th style="padding:10px 14px; border-bottom:1px solid #d5d9d9;">Customer & Destination</th>
+              <th style="padding:10px 14px; border-bottom:1px solid #d5d9d9;">Ordered Item</th>
+              <th style="padding:10px 14px; border-bottom:1px solid #d5d9d9;">Quantity</th>
+              <th style="padding:10px 14px; border-bottom:1px solid #d5d9d9;">Total Amount</th>
+              <th style="padding:10px 14px; border-bottom:1px solid #d5d9d9;">Fulfillment Status</th>
+              <th style="padding:10px 14px; border-bottom:1px solid #d5d9d9;">Update Tracking</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in orders %}
+              <tr style="border-bottom:1px solid #eee;">
+                <td style="padding:12px 14px; color:#111;">
+                  <strong>#DC-{{ o.order_id }}</strong>
+                  <div style="font-size:11px; color:#565959;">{{ o.created_at[:10] }}</div>
+                  <div style="font-size:10px; color:var(--amz-blue);">{{ o.tracking_id }}</div>
+                </td>
+                <td style="padding:12px 14px; color:#111;">
+                  <strong>{{ o.customer_name }}</strong>
+                  <div style="font-size:11px; color:#565959;">{{ o.customer_email }}</div>
+                  <div style="font-size:10px; color:#565959;">📍 {{ o.shipping_address }}</div>
+                </td>
+                <td style="padding:12px 14px; color:#111;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <img src="{{ o.image_url }}" alt="{{ o.product_name }}" style="width:36px; height:36px; object-fit:contain; border:1px solid #eee; border-radius:4px;">
+                    <span style="font-weight:700; font-size:13px;">{{ o.product_name[:35] }}...</span>
+                  </div>
+                </td>
+                <td style="padding:12px 14px; font-weight:700; color:#111;">
+                  {{ o.quantity }}x
+                </td>
+                <td style="padding:12px 14px; font-weight:800; color:#067d62;">
+                  ₹{{"{:,.0f}".format(o.quantity * o.price)}}
+                </td>
+                <td style="padding:12px 14px;">
+                  <span style="font-weight:800; font-size:12px; color:{% if o.order_status == 'Delivered' %}#067d62{% elif o.order_status == 'Shipped' %}#0284c7{% else %}#ea580c{% endif %};">
+                    {{ o.order_status }}
+                  </span>
+                </td>
+                <td style="padding:12px 14px;">
+                  <form method="post" action="{{ url_for('merchant_update_order_status', oid=o.order_id) }}" style="display:flex; gap:6px;">
+                    <select name="status" style="padding:4px 6px; font-size:12px; border:1px solid #ccc; border-radius:4px; background:#fff;">
+                      <option value="Confirmed" {% if o.order_status == 'Confirmed' %}selected{% endif %}>Confirmed</option>
+                      <option value="Processing" {% if o.order_status == 'Processing' %}selected{% endif %}>Processing</option>
+                      <option value="Shipped" {% if o.order_status == 'Shipped' %}selected{% endif %}>Shipped</option>
+                      <option value="Out for Delivery" {% if o.order_status == 'Out for Delivery' %}selected{% endif %}>Out for Delivery</option>
+                      <option value="Delivered" {% if o.order_status == 'Delivered' %}selected{% endif %}>Delivered</option>
+                    </select>
+                    <button type="submit" class="btn-amz-secondary" style="padding:4px 8px; font-size:11px;">Update</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div style="text-align:center; padding:30px; background:#fafafa; border-radius:8px; border:1px dashed #ccc;">
+        <p style="color:#565959; font-size:13px;">No orders received yet. When customers purchase your listed items, they will appear here in real-time!</p>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endblock %}

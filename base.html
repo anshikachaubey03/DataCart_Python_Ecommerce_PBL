@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}DataCart — Hyperlocal Multi-Vendor Marketplace{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- Chart.js for Admin Analytics Portal -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="nav-header">
+    <div class="nav-top">
+      
+      <!-- Commercial Brand Logo -->
+      <a class="brand-logo" href="{{ url_for('home') }}">
+        <span>Data<span class="logo-accent">Cart</span></span>
+        <span class="logo-badge" style="background:#10b981; color:#fff;">DIRECT</span>
+      </a>
+
+      <!-- Hyperlocal Deliver To Location -->
+      <div class="nav-delivery" onclick="openLocationModal()" style="cursor:pointer;" title="Change delivery city">
+        <div class="loc-icon">📍</div>
+        <div class="loc-text">
+          <span>Deliver to</span>
+          <strong>{{ user_city }} ▾</strong>
+        </div>
+      </div>
+
+      <!-- Universal Search Bar -->
+      <div class="search-form-wrapper">
+        <form class="search-form" action="{{ url_for('home') }}" method="get">
+          <select class="search-category-select" name="category">
+            <option value="">All Categories</option>
+            {% for cat in all_categories %}
+              <option value="{{ cat }}" {% if request.args.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+          </select>
+          <input 
+            class="search-input" 
+            type="text" 
+            name="q" 
+            value="{{ request.args.get('q', '') }}" 
+            placeholder="Search products, brands, or local stores in {{ user_city }}..." 
+            autocomplete="off"
+          >
+          <button class="search-btn" type="submit" title="Search">
+            🔍
+          </button>
+        </form>
+      </div>
+
+      <!-- Right Navigation Actions (Strict Role-Based Categorization) -->
+      <div class="nav-actions">
+        
+        <!-- Account / Sign-in -->
+        {% if session.get('customer_id') %}
+          <div class="nav-item">
+            <span class="line-1">Hello, {{ session['customer_name'].split()[0] }}</span>
+            <span class="line-2">
+              <a href="{{ url_for('offers') }}" style="color:#febd69; font-weight:700;">My Deals</a> · 
+              <a href="{{ url_for('logout') }}" style="color:#ffffff;">Sign Out</a>
+            </span>
+          </div>
+        {% else %}
+          <a class="nav-item" href="{{ url_for('login') }}">
+            <span class="line-1">Hello, sign in</span>
+            <span class="line-2">Account ▾</span>
+          </a>
+        {% endif %}
+
+        <!-- Returns & Orders -->
+        <a class="nav-item" href="{{ url_for('orders') }}">
+          <span class="line-1">Returns</span>
+          <span class="line-2">& Orders</span>
+        </a>
+
+        <!-- Store Pickup Holds -->
+        {% if session.get('customer_id') %}
+          <a class="nav-item" href="{{ url_for('customer_reservations') }}">
+            <span class="line-1">Pickup</span>
+            <span class="line-2" style="color:#86efac;">Holds 🏪</span>
+          </a>
+        {% endif %}
+
+        <!-- Merchant Seller Central Link -->
+        {% if is_merchant %}
+          <a class="nav-item" href="{{ url_for('merchant_dashboard') }}" title="Manage your store">
+            <span class="line-1">Store: {{ merchant_store_name[:10] }}</span>
+            <span class="line-2" style="color:#febd69;">Seller Hub 📦</span>
+          </a>
+        {% else %}
+          <a class="nav-item" href="{{ url_for('merchant_register') }}" title="Sell on DataCart">
+            <span class="line-1">Become a</span>
+            <span class="line-2" style="color:#febd69;">Seller 📦</span>
+          </a>
+        {% endif %}
+
+        <!-- Executive BI Analytics Link (VISIBLE ONLY TO ADMIN) -->
+        {% if is_admin %}
+          <a class="nav-item" href="{{ url_for('analytics') }}" style="background:rgba(239,68,68,0.2); padding:4px 8px; border-radius:4px; border:1px solid #ef4444;" title="Restricted Admin BI Hub">
+            <span class="line-1" style="color:#fca5a5;">Admin</span>
+            <span class="line-2" style="color:#ffffff;">BI Hub ⚡</span>
+          </a>
+        {% endif %}
+
+        <!-- Cart with Live Count Badge -->
+        <a class="nav-cart-btn" href="{{ url_for('cart') }}">
+          <div class="cart-icon-wrapper">
+            🛒
+            <span class="cart-badge-count">{{ cart_count }}</span>
+          </div>
+          <span style="font-weight: 700; font-size: 14px; margin-top: 8px;">Cart</span>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- Secondary Navigation Sub-bar -->
+    <nav class="nav-sub">
+      <div class="nav-sub-inner">
+        <a class="nav-sub-link highlight" href="{{ url_for('home') }}">☰ All Products</a>
+        <a class="nav-sub-link" href="{{ url_for('offers') }}" style="color:#38bdf8; font-weight:700;">⚡ Today's Deals</a>
+        
+        <!-- 1-Click Developer BI Hub (Always available to you as Developer/Admin) -->
+        <a class="nav-sub-link analytics-pill" href="{{ url_for('developer_mode') }}" style="background:linear-gradient(135deg, #4f46e5, #6366f1); color:#ffffff; font-weight:700; border:1px solid #818cf8;" title="Full Platform Executive BI & ML Models">
+          ⚡ Developer Analytics Hub
+        </a>
+
+        {% if is_merchant %}
+          <a class="nav-sub-link" href="{{ url_for('merchant_dashboard') }}" style="color:#10b981; font-weight:700;">📦 My Seller Dashboard</a>
+        {% else %}
+          <a class="nav-sub-link" href="{{ url_for('merchant_register') }}" style="color:#10b981;">📦 Open Local Store (Sell)</a>
+        {% endif %}
+
+        <a class="nav-sub-link" href="{{ url_for('home', category='Computers') }}">Computers & Laptops</a>
+        <a class="nav-sub-link" href="{{ url_for('home', category='Audio') }}">Audio & Headphones</a>
+        <a class="nav-sub-link" href="{{ url_for('home', category='Gaming') }}">Gaming</a>
+        <a class="nav-sub-link" href="{{ url_for('home', category='Accessories') }}">Tech Accessories</a>
+        <a class="nav-sub-link" href="{{ url_for('home', category='Wearables') }}">Smart Wearables</a>
+        <a class="nav-sub-link" href="{{ url_for('home', category='Books') }}">Books</a>
+        <a class="nav-sub-link" href="{{ url_for('home', category='Home') }}">Smart Home</a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- User Segment & Retention Offer Strip (Shown for signed-in users) -->
+  {% if active_user_offer and session.get('customer_id') %}
+    <div class="user-personalized-strip">
+      <div class="strip-inner">
+        <div>
+          <span class="strip-badge">{{ active_user_offer.badge }}</span>
+          <strong>Special for {{ session['customer_name'] }}:</strong>
+          {{ active_user_offer.title }} — Use Promo Code <code style="background:#081522; padding:2px 6px; border-radius:4px; color:#febd69; font-weight:800;">{{ active_user_offer.code }}</code> at checkout!
+        </div>
+        <a href="{{ url_for('offers') }}" style="color:#febd69; font-weight:700; font-size:12px;">View All My Deals →</a>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Main Content Body -->
+  <main class="page-wrapper">
+    
+    <!-- Flash Messages Container -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container">
+          {% for category, message in messages %}
+            <div class="flash-msg {{ category }}">
+              <span>{{ message }}</span>
+              <span style="cursor:pointer; opacity:0.7;" onclick="this.parentElement.style.display='none'">✕</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
+  </main>
+
+  <!-- Commercial Multi-Column Footer -->
+  <footer class="amz-footer">
+    <a class="back-to-top" href="#top" onclick="window.scrollTo({top:0, behavior:'smooth'}); return false;">
+      ▲ Back to top
+    </a>
+
+    <div class="footer-content">
+      <div class="footer-col">
+        <h4>About DataCart</h4>
+        <ul>
+          <li><a href="{{ url_for('home') }}">About Our Marketplace</a></li>
+          <li><a href="{{ url_for('home') }}">Verified Local Stores</a></li>
+          <li><a href="{{ url_for('home') }}">Same-Day Express Delivery</a></li>
+          <li><a href="{{ url_for('home') }}">Customer Safety & Security</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Sell & Partner</h4>
+        <ul>
+          <li><a href="{{ url_for('merchant_register') }}">Sell on DataCart</a></li>
+          <li><a href="{{ url_for('merchant_login') }}">Seller Central Sign-In</a></li>
+          <li><a href="{{ url_for('merchant_register') }}">Local Merchant Onboarding</a></li>
+          <li><a href="#">Fulfillment by DataCart</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Customer Care</h4>
+        <ul>
+          <li><a href="{{ url_for('orders') }}">Track Orders</a></li>
+          <li><a href="{{ url_for('offers') }}">Discounts & Smart Coupons</a></li>
+          <li><a href="https://wa.me/919876543210?text=Hello%20DataCart%20Support" target="_blank">WhatsApp Helpdesk</a></li>
+          <li><a href="#">Returns & 7-Day Replacement</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Delivery Cities</h4>
+        <ul>
+          <li><a href="#" onclick="setCityAndReload('Bharuch')">Bharuch (Express Delivery)</a></li>
+          <li><a href="#" onclick="setCityAndReload('Vadodara')">Vadodara (Same-Day)</a></li>
+          <li><a href="#" onclick="setCityAndReload('Surat')">Surat (Same-Day)</a></li>
+          <li><a href="#" onclick="setCityAndReload('Ahmedabad')">Ahmedabad (Express)</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>© {{ now_year }} DataCart Technologies Pvt. Ltd. · Commercial Multi-Vendor Hyperlocal Marketplace</p>
+      <p style="margin-top: 4px; font-size: 11px; color:#94a3b8;">
+        256-Bit SSL Encrypted · PCI-DSS Compliant Payments · Direct Merchant Support
+        · <a href="{{ url_for('developer_mode') }}" style="color:#818cf8; text-decoration:none; font-weight:700;">⚡ Developer BI Hub</a>
+        {% if not is_admin %}
+          · <a href="{{ url_for('admin_login') }}" style="color:#64748b; text-decoration:none;">Admin Login</a>
+        {% endif %}
+      </p>
+    </div>
+  </footer>
+
+  <!-- City / Hyperlocal Location Selection Modal -->
+  <div class="modal-overlay" id="locationModal" style="display:none; align-items:center; justify-content:center; z-index:9999;">
+    <div class="modal-card" style="max-width:440px; padding:28px; background:#0f172a; border:1px solid #38bdf8; box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <h3 style="margin:0; font-size:18px; color:#fff;">📍 Select Delivery Location</h3>
+        <button style="background:none; border:none; color:#94a3b8; font-size:16px; cursor:pointer;" onclick="closeLocationModal()">✕</button>
+      </div>
+      <p style="font-size:13px; color:#94a3b8; margin-bottom:16px;">
+        Choose your city to explore nearby verified local stores and same-day delivery:
+      </p>
+
+      <form method="post" action="{{ url_for('set_location') }}">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px;">
+          {% for c in popular_cities %}
+            <button type="submit" name="city" value="{{ c }}" class="btn-amz-secondary" style="padding:10px; font-size:13px; text-align:center; {% if user_city == c %}border-color:#38bdf8; color:#38bdf8; font-weight:800; background:#1e293b;{% endif %}">
+              {{ c }}
+            </button>
+          {% endfor %}
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Floating WhatsApp Support Button -->
+  <a 
+    href="https://wa.me/919876543210?text=Hello%20DataCart%20Support,%20I%20need%20assistance%20with%20shopping" 
+    target="_blank"
+    class="whatsapp-floating-btn"
+    title="Chat with DataCart Support on WhatsApp"
+  >
+    💬 WhatsApp Help
+  </a>
+
+  <script>
+  function openLocationModal() {
+    document.getElementById('locationModal').style.display = 'flex';
+  }
+  function closeLocationModal() {
+    document.getElementById('locationModal').style.display = 'none';
+  }
+  function setCityAndReload(city) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("set_location") }}';
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'city';
+    input.value = city;
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+  }
+  </script>
+
+</body>
+</html>

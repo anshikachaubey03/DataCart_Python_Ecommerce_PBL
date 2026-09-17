@@ -206,6 +206,23 @@ def init_db():
         comment TEXT,
         created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS reservations(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        customer_name TEXT,
+        customer_phone TEXT,
+        product_id INTEGER NOT NULL,
+        product_name TEXT,
+        store_name TEXT,
+        store_address TEXT,
+        merchant_id INTEGER,
+        quantity INTEGER DEFAULT 1,
+        price REAL,
+        pickup_otp TEXT NOT NULL,
+        status TEXT DEFAULT 'ACTIVE',
+        expires_at TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    );
     """)
 
     # Safe dynamic column migrations
@@ -213,12 +230,12 @@ def init_db():
         ("customers", "role", "TEXT DEFAULT 'customer'"),
         ("customers", "store_name", "TEXT DEFAULT ''"),
         ("customers", "business_id", "TEXT DEFAULT ''"),
-        ("customers", "city", "TEXT DEFAULT 'Bharuch'"),
+        ("customers", "city", "TEXT DEFAULT 'Ankleshwar'"),
         ("customers", "whatsapp", "TEXT DEFAULT ''"),
         ("products", "merchant_id", "INTEGER DEFAULT 1"),
         ("products", "store_name", "TEXT DEFAULT 'DataCart Direct'"),
-        ("products", "city", "TEXT DEFAULT 'Bharuch'"),
-        ("products", "store_address", "TEXT DEFAULT 'Station Road, Bharuch'"),
+        ("products", "city", "TEXT DEFAULT 'Ankleshwar'"),
+        ("products", "store_address", "TEXT DEFAULT 'Station Road, Ankleshwar'"),
         ("products", "whatsapp_number", "TEXT DEFAULT '919876543210'"),
         ("order_items", "merchant_id", "INTEGER DEFAULT 1"),
         ("payments", "masked_details", "TEXT DEFAULT ''"),
@@ -242,40 +259,40 @@ def init_db():
             "admin",
             "DataCart Corporate HQ",
             "GSTIN24ADMIN9999Z1",
-            "Corporate Tech Park, Highway",
-            "392001",
+            "GIDC Commercial Complex, Ankleshwar",
+            "393002",
             datetime.utcnow().isoformat()
         ))
         conn.commit()
 
-    # Seed Verified Local Merchants
+    # Seed Verified Local Merchants in Ankleshwar
     merchant_count = conn.execute("SELECT COUNT(*) FROM customers WHERE role='merchant'").fetchone()[0]
     if merchant_count < 4:
         merchants = [
             (
-                "Harsh Patel", "harsh.apex@example.com", generate_password_hash("seller123"), "merchant",
-                "Apex Electronics & Computers", "GSTIN24AABCA1234F1Z1", "Bharuch", "919876543210",
-                "Shop 12, Station Road Commercial Complex, Bharuch", "392001", datetime.utcnow().isoformat()
+                "Shreeji Electronics", "shreeji.ank@example.com", generate_password_hash("seller123"), "merchant",
+                "Shreeji Electronics & Appliances", "GSTIN24AABCS1234F1Z1", "Ankleshwar", "919876543210",
+                "Shop 12, Station Road Commercial Complex, Ankleshwar", "393001", datetime.utcnow().isoformat()
             ),
             (
-                "Meera Shah", "meera.sound@example.com", generate_password_hash("seller123"), "merchant",
-                "SoundWave Studio & Acoustics", "GSTIN24AABCS5678G1Z2", "Vadodara", "919876543211",
-                "Alkapuri Arcade, RC Dutt Road, Vadodara", "390007", datetime.utcnow().isoformat()
+                "Narmada Tech", "narmada.tech@example.com", generate_password_hash("seller123"), "merchant",
+                "Narmada Tech & IT Solutions", "GSTIN24AABCN5678G1Z2", "Ankleshwar", "919876543211",
+                "GIDC Industrial Estate, Near Water Tank, Ankleshwar", "393002", datetime.utcnow().isoformat()
             ),
             (
-                "Karan Desai", "karan.gaming@example.com", generate_password_hash("seller123"), "merchant",
-                "Gamers Heaven & Esports Store", "GSTIN24AABCG9101H1Z3", "Surat", "919876543212",
-                "Ring Road Tech Hub, Surat", "395002", datetime.utcnow().isoformat()
+                "Gujarat Smart Living", "smart.living@example.com", generate_password_hash("seller123"), "merchant",
+                "Gujarat Smart Living & Lighting", "GSTIN24AABCG9101H1Z3", "Ankleshwar", "919876543212",
+                "Rajpipla Road High Street, Ankleshwar", "393001", datetime.utcnow().isoformat()
             ),
             (
-                "Pooja Mehta", "pooja.istore@example.com", generate_password_hash("seller123"), "merchant",
-                "iStore Express Premium Retail", "GSTIN24AABCI3141J1Z4", "Bharuch", "919876543213",
-                "Link Road, Near Zadeshwar, Bharuch", "392011", datetime.utcnow().isoformat()
+                "Ankleshwar Sound Studio", "sound.studio@example.com", generate_password_hash("seller123"), "merchant",
+                "Ankleshwar Sound Studio & Acoustics", "GSTIN24AABCS3141J1Z4", "Ankleshwar", "919876543213",
+                "Valia Road Corner, Ankleshwar", "393002", datetime.utcnow().isoformat()
             ),
             (
-                "Anil Sharma", "anil.smart@example.com", generate_password_hash("seller123"), "merchant",
-                "Smart Living Solutions", "GSTIN24AABCS5161K1Z5", "Ahmedabad", "919876543214",
-                "SG Highway Commercial Tower, Ahmedabad", "380054", datetime.utcnow().isoformat()
+                "Radhe Hardware", "radhe.hardware@example.com", generate_password_hash("seller123"), "merchant",
+                "Radhe Industrial Hardware & Tools", "GSTIN24AABCR5161K1Z5", "Ankleshwar", "919876543214",
+                "Plot 45, GIDC Phase-1, Ankleshwar", "393002", datetime.utcnow().isoformat()
             )
         ]
         for m in merchants:
@@ -286,22 +303,22 @@ def init_db():
         conn.commit()
 
     # Fetch seeded merchant IDs
-    apex_m = conn.execute("SELECT id FROM customers WHERE store_name='Apex Electronics & Computers'").fetchone()
-    apex_id = apex_m["id"] if apex_m else 1
-    sound_m = conn.execute("SELECT id FROM customers WHERE store_name='SoundWave Studio & Acoustics'").fetchone()
+    shreeji_m = conn.execute("SELECT id FROM customers WHERE store_name='Shreeji Electronics & Appliances'").fetchone()
+    shreeji_id = shreeji_m["id"] if shreeji_m else 1
+    narmada_m = conn.execute("SELECT id FROM customers WHERE store_name='Narmada Tech & IT Solutions'").fetchone()
+    narmada_id = narmada_m["id"] if narmada_m else 1
+    sound_m = conn.execute("SELECT id FROM customers WHERE store_name='Ankleshwar Sound Studio & Acoustics'").fetchone()
     sound_id = sound_m["id"] if sound_m else 1
-    gamer_m = conn.execute("SELECT id FROM customers WHERE store_name='Gamers Heaven & Esports Store'").fetchone()
-    gamer_id = gamer_m["id"] if gamer_m else 1
-    istore_m = conn.execute("SELECT id FROM customers WHERE store_name='iStore Express Premium Retail'").fetchone()
-    istore_id = istore_m["id"] if istore_m else 1
-    smart_m = conn.execute("SELECT id FROM customers WHERE store_name='Smart Living Solutions'").fetchone()
+    smart_m = conn.execute("SELECT id FROM customers WHERE store_name='Gujarat Smart Living & Lighting'").fetchone()
     smart_id = smart_m["id"] if smart_m else 1
+    radhe_m = conn.execute("SELECT id FROM customers WHERE store_name='Radhe Industrial Hardware & Tools'").fetchone()
+    radhe_id = radhe_m["id"] if radhe_m else 1
 
-    # Check if catalog needs professional refresh
-    old_books = conn.execute("SELECT COUNT(*) FROM products WHERE category='Books'").fetchone()[0]
+    # Check if catalog needs refresh
     total_prods = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
+    ank_prods = conn.execute("SELECT COUNT(*) FROM products WHERE city='Ankleshwar'").fetchone()[0]
 
-    if total_prods < 15 or old_books > 0:
+    if total_prods < 15 or ank_prods < 5:
         conn.execute("DELETE FROM products")
         products = [
             (
@@ -310,7 +327,7 @@ def init_db():
                 104900.0, 119900.0, 12, "Computers", 4.9, 2140, "Top Rated",
                 "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&auto=format&fit=crop&q=80",
                 "laptop apple macbook air m3 computer thin light space gray",
-                apex_id, "Apex Electronics & Computers", "Bharuch", "Station Road Commercial Complex, Bharuch", "919876543210"
+                shreeji_id, "Shreeji Electronics & Appliances", "Ankleshwar", "Shop 12, Station Road Commercial Complex, Ankleshwar", "919876543210"
             ),
             (
                 "Dell XPS 13 Plus Ultrabook (Intel Core i7 13th Gen, 16GB RAM, 1TB SSD, 3.5K OLED)",
@@ -318,7 +335,7 @@ def init_db():
                 134990.0, 159990.0, 8, "Computers", 4.7, 860, "Premium Choice",
                 "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=500&auto=format&fit=crop&q=80",
                 "laptop dell xps 13 ultrabook windows oled touch premium",
-                apex_id, "Apex Electronics & Computers", "Bharuch", "Station Road Commercial Complex, Bharuch", "919876543210"
+                narmada_id, "Narmada Tech & IT Solutions", "Ankleshwar", "GIDC Industrial Estate, Ankleshwar", "919876543211"
             ),
             (
                 "ASUS ROG Zephyrus G14 Gaming Laptop (Ryzen 9 8945HS, RTX 4070, 32GB RAM, 165Hz QHD OLED)",
@@ -326,7 +343,7 @@ def init_db():
                 159990.0, 189990.0, 6, "Gaming", 4.8, 1420, "Flagship Deal",
                 "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=500&auto=format&fit=crop&q=80",
                 "gaming laptop asus rog zephyrus rtx 4070 oled ryzen 9",
-                gamer_id, "Gamers Heaven & Esports Store", "Surat", "Ring Road Tech Hub, Surat", "919876543212"
+                narmada_id, "Narmada Tech & IT Solutions", "Ankleshwar", "GIDC Industrial Estate, Ankleshwar", "919876543211"
             ),
             (
                 "Apple iPhone 15 Pro Max (256GB, Natural Titanium)",
@@ -334,7 +351,7 @@ def init_db():
                 139900.0, 159900.0, 15, "Computers", 4.9, 4520, "Best Seller",
                 "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=500&auto=format&fit=crop&q=80",
                 "iphone apple 15 pro max titanium camera flagship smartphone",
-                istore_id, "iStore Express Premium Retail", "Bharuch", "Link Road, Near Zadeshwar, Bharuch", "919876543213"
+                shreeji_id, "Shreeji Electronics & Appliances", "Ankleshwar", "Shop 12, Station Road Commercial Complex, Ankleshwar", "919876543210"
             ),
             (
                 "Samsung Galaxy S24 Ultra 5G (512GB, Titanium Gray with Galaxy AI & S-Pen)",
@@ -342,7 +359,7 @@ def init_db():
                 129999.0, 144999.0, 10, "Computers", 4.8, 3180, "Hot Release",
                 "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=500&auto=format&fit=crop&q=80",
                 "samsung galaxy s24 ultra smartphone galaxy ai spen 5g android",
-                apex_id, "Apex Electronics & Computers", "Bharuch", "Station Road Commercial Complex, Bharuch", "919876543210"
+                shreeji_id, "Shreeji Electronics & Appliances", "Ankleshwar", "Shop 12, Station Road Commercial Complex, Ankleshwar", "919876543210"
             ),
             (
                 "Sony WH-1000XM5 Wireless Active Noise-Cancelling Headphones",
@@ -350,7 +367,7 @@ def init_db():
                 26990.0, 34990.0, 24, "Audio", 4.8, 3890, "Audiophile Choice",
                 "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=80",
                 "sony headphones wh1000xm5 wireless anc bluetooth audio ldac",
-                sound_id, "SoundWave Studio & Acoustics", "Vadodara", "Alkapuri Arcade, RC Dutt Road, Vadodara", "919876543211"
+                sound_id, "Ankleshwar Sound Studio & Acoustics", "Ankleshwar", "Valia Road Corner, Ankleshwar", "919876543213"
             ),
             (
                 "Bose QuietComfort Ultra Wireless Earbuds with Spatial Audio",
@@ -358,7 +375,7 @@ def init_db():
                 23900.0, 29900.0, 18, "Audio", 4.7, 1850, "Top Rated",
                 "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&auto=format&fit=crop&q=80",
                 "bose earbuds quietcomfort ultra wireless anc spatial audio bluetooth",
-                sound_id, "SoundWave Studio & Acoustics", "Vadodara", "Alkapuri Arcade, RC Dutt Road, Vadodara", "919876543211"
+                sound_id, "Ankleshwar Sound Studio & Acoustics", "Ankleshwar", "Valia Road Corner, Ankleshwar", "919876543213"
             ),
             (
                 "Marshall Stanmore III Bluetooth Home Audio Speaker (Black & Brass)",
@@ -366,7 +383,7 @@ def init_db():
                 31999.0, 39999.0, 14, "Audio", 4.8, 2210, "Vintage Classic",
                 "https://images.unsplash.com/photo-1545454675-3531b543be5d?w=500&auto=format&fit=crop&q=80",
                 "marshall speaker stanmore bluetooth audio wireless bass home",
-                sound_id, "SoundWave Studio & Acoustics", "Vadodara", "Alkapuri Arcade, RC Dutt Road, Vadodara", "919876543211"
+                sound_id, "Ankleshwar Sound Studio & Acoustics", "Ankleshwar", "Valia Road Corner, Ankleshwar", "919876543213"
             ),
             (
                 "Logitech MX Master 3S Wireless Laser Mouse (Quiet Clicks, 8K DPI)",
@@ -374,7 +391,7 @@ def init_db():
                 8495.0, 10995.0, 35, "Accessories", 4.9, 5820, "Workplace Pro",
                 "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=500&auto=format&fit=crop&q=80",
                 "mouse logitech mx master wireless laser productivity ergonomic",
-                apex_id, "Apex Electronics & Computers", "Bharuch", "Station Road Commercial Complex, Bharuch", "919876543210"
+                narmada_id, "Narmada Tech & IT Solutions", "Ankleshwar", "GIDC Industrial Estate, Ankleshwar", "919876543211"
             ),
             (
                 "Keychron Q1 Pro Custom Wireless Mechanical Keyboard (CNC Aluminum)",
@@ -382,7 +399,7 @@ def init_db():
                 14999.0, 18999.0, 15, "Accessories", 4.8, 1120, "Enthusiast Choice",
                 "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&auto=format&fit=crop&q=80",
                 "keyboard mechanical keychron q1 wireless qmk aluminum switches",
-                gamer_id, "Gamers Heaven & Esports Store", "Surat", "Ring Road Tech Hub, Surat", "919876543212"
+                narmada_id, "Narmada Tech & IT Solutions", "Ankleshwar", "GIDC Industrial Estate, Ankleshwar", "919876543211"
             ),
             (
                 "Samsung Odyssey OLED G9 49-inch Curved Gaming Monitor (240Hz, 0.03ms)",
@@ -390,7 +407,7 @@ def init_db():
                 119999.0, 149999.0, 5, "Gaming", 4.9, 740, "Ultra Wide Beast",
                 "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&auto=format&fit=crop&q=80",
                 "monitor samsung odyssey oled 49 inch curved gaming ultrawide 240hz",
-                gamer_id, "Gamers Heaven & Esports Store", "Surat", "Ring Road Tech Hub, Surat", "919876543212"
+                narmada_id, "Narmada Tech & IT Solutions", "Ankleshwar", "GIDC Industrial Estate, Ankleshwar", "919876543211"
             ),
             (
                 "Apple Watch Ultra 2 (GPS + Cellular 49mm Titanium, Ocean Band)",
@@ -398,7 +415,7 @@ def init_db():
                 84900.0, 89900.0, 10, "Wearables", 4.9, 1920, "Extreme Outdoor",
                 "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=500&auto=format&fit=crop&q=80",
                 "apple watch ultra 2 titanium gps cellular smartwatch fitness diving",
-                istore_id, "iStore Express Premium Retail", "Bharuch", "Link Road, Near Zadeshwar, Bharuch", "919876543213"
+                shreeji_id, "Shreeji Electronics & Appliances", "Ankleshwar", "Shop 12, Station Road Commercial Complex, Ankleshwar", "919876543210"
             ),
             (
                 "Garmin Fenix 7 Pro Sapphire Solar Multisport Smartwatch (51mm Titanium)",
@@ -406,7 +423,7 @@ def init_db():
                 79990.0, 94990.0, 8, "Wearables", 4.8, 890, "Endurance Pro",
                 "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=80",
                 "garmin fenix 7 pro solar titanium gps smartwatch endurance running",
-                istore_id, "iStore Express Premium Retail", "Bharuch", "Link Road, Near Zadeshwar, Bharuch", "919876543213"
+                shreeji_id, "Shreeji Electronics & Appliances", "Ankleshwar", "Shop 12, Station Road Commercial Complex, Ankleshwar", "919876543210"
             ),
             (
                 "SanDisk Extreme PRO 2TB Portable NVMe External SSD (2000MB/s USB 3.2)",
@@ -414,7 +431,7 @@ def init_db():
                 18999.0, 28999.0, 25, "Accessories", 4.9, 4100, "High Speed Storage",
                 "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=500&auto=format&fit=crop&q=80",
                 "ssd sandisk 2tb portable nvme external backup fast storage usb c",
-                apex_id, "Apex Electronics & Computers", "Bharuch", "Station Road Commercial Complex, Bharuch", "919876543210"
+                narmada_id, "Narmada Tech & IT Solutions", "Ankleshwar", "GIDC Industrial Estate, Ankleshwar", "919876543211"
             ),
             (
                 "Dyson V12 Detect Slim Cordless Vacuum Cleaner (Laser Fluffy Head)",
@@ -422,7 +439,7 @@ def init_db():
                 44900.0, 55900.0, 9, "Home", 4.7, 1630, "Smart Home Tech",
                 "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=500&auto=format&fit=crop&q=80",
                 "dyson v12 cordless vacuum cleaner laser smart home cleaning",
-                smart_id, "Smart Living Solutions", "Ahmedabad", "SG Highway Commercial Tower, Ahmedabad", "919876543214"
+                smart_id, "Gujarat Smart Living & Lighting", "Ankleshwar", "Rajpipla Road High Street, Ankleshwar", "919876543212"
             ),
             (
                 "Philips Hue Play Gradient Lightstrip & Smart HDMI Sync Box",
@@ -430,7 +447,15 @@ def init_db():
                 21999.0, 29999.0, 16, "Home", 4.6, 920, "Cinema Ambient",
                 "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=500&auto=format&fit=crop&q=80",
                 "philips hue smart lighting hdmi sync ambient tv lightstrip rgb",
-                smart_id, "Smart Living Solutions", "Ahmedabad", "SG Highway Commercial Tower, Ahmedabad", "919876543214"
+                smart_id, "Gujarat Smart Living & Lighting", "Ankleshwar", "Rajpipla Road High Street, Ankleshwar", "919876543212"
+            ),
+            (
+                "Bosch Professional Heavy-Duty Rotary Hammer Drill (GSH 500)",
+                "Industrial standard 1100W impact demolition hammer drill designed for robust civil and factory maintenance in Ankleshwar industrial hub.",
+                11499.0, 14999.0, 14, "Tools", 4.9, 540, "Industrial Grade",
+                "https://images.unsplash.com/photo-1504148455328-c376907d081c?w=500&auto=format&fit=crop&q=80",
+                "bosch hammer drill rotary industrial tools power maintenance",
+                radhe_id, "Radhe Industrial Hardware & Tools", "Ankleshwar", "Plot 45, GIDC Phase-1, Ankleshwar", "919876543214"
             )
         ]
 
@@ -1634,6 +1659,146 @@ def merchant_update_order_status(oid):
     conn.close()
 
     flash(f"Order #DC-{oid} fulfillment status updated to '{new_status}' in real-time.", "success")
+    return redirect(url_for("merchant_dashboard"))
+
+
+# -----------------------------
+# 24-Hour Zero-Advance Store Pickup Hold & Counter OTP
+# -----------------------------
+@app.route("/reserve/<int:pid>", methods=["GET", "POST"])
+def reserve_product(pid):
+    if not session.get("customer_id"):
+        flash("Please sign in to hold this product for store pickup.", "info")
+        return redirect(url_for("login", next=request.url))
+
+    conn = db()
+    prod = conn.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
+    if not prod:
+        conn.close()
+        flash("Product not found.", "error")
+        return redirect(url_for("home"))
+
+    if prod["stock"] <= 0:
+        conn.close()
+        flash("Sorry, this item is currently out of stock at this local store.", "error")
+        return redirect(url_for("product_detail", pid=pid))
+
+    if request.method == "POST":
+        customer_id = session["customer_id"]
+        customer_name = session.get("customer_name", "Customer")
+        phone = request.form.get("phone", session.get("customer_phone", "9876543210")).strip()
+        
+        # Generate 6-digit numeric OTP for showroom counter
+        otp = str(secrets.randbelow(900000) + 100000)
+        expires_at = (datetime.utcnow() + timedelta(hours=24)).isoformat()
+        now_str = datetime.utcnow().isoformat()
+
+        # Hold stock
+        conn.execute("UPDATE products SET stock = stock - 1 WHERE id=?", (pid,))
+        
+        # Create reservation record
+        cur = conn.execute("""
+            INSERT INTO reservations(
+                customer_id, customer_name, customer_phone, product_id, product_name,
+                store_name, store_address, merchant_id, quantity, price, pickup_otp,
+                status, expires_at, created_at
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            customer_id, customer_name, phone, prod["id"], prod["name"],
+            prod["store_name"], prod["store_address"], prod["merchant_id"], 1,
+            prod["price"], otp, "ACTIVE", expires_at, now_str
+        ))
+        rid = cur.lastrowid
+
+        # Log event
+        conn.execute("""
+            INSERT INTO events(customer_id, product_id, event_type, created_at)
+            VALUES(?,?,?,?)
+        """, (customer_id, pid, "pickup_reservation_created", now_str))
+
+        conn.commit()
+        conn.close()
+
+        flash(f"🎉 Reserved! Your 24-Hour Pickup Hold OTP is: {otp}. Show this at {prod['store_name']}.", "success")
+        return redirect(url_for("customer_reservations"))
+
+    conn.close()
+    return render_template("reserve_confirm.html", product=prod)
+
+
+@app.get("/reservations")
+def customer_reservations():
+    if not session.get("customer_id"):
+        return redirect(url_for("login", next=request.url))
+
+    conn = db()
+    reservations = conn.execute("""
+        SELECT r.*, p.image_url, p.category, c.whatsapp as store_whatsapp
+        FROM reservations r
+        LEFT JOIN products p ON r.product_id = p.id
+        LEFT JOIN customers c ON r.merchant_id = c.id
+        WHERE r.customer_id = ?
+        ORDER BY r.id DESC
+    """, (session["customer_id"],)).fetchall()
+    conn.close()
+
+    return render_template("reservations.html", reservations=reservations)
+
+
+@app.post("/reservations/<int:rid>/cancel")
+def cancel_reservation(rid):
+    if not session.get("customer_id"):
+        return redirect(url_for("login"))
+
+    conn = db()
+    res = conn.execute("SELECT * FROM reservations WHERE id=? AND customer_id=?", (rid, session["customer_id"])).fetchone()
+    if res and res["status"] == "ACTIVE":
+        conn.execute("UPDATE reservations SET status='CANCELLED' WHERE id=?", (rid,))
+        conn.execute("UPDATE products SET stock = stock + ? WHERE id=?", (res["quantity"], res["product_id"]))
+        conn.commit()
+        flash("Reservation cancelled. Inventory released back to store.", "info")
+    conn.close()
+    return redirect(url_for("customer_reservations"))
+
+
+@app.post("/merchant/reservation/verify-otp")
+def merchant_verify_pickup_otp():
+    if not session.get("merchant_id"):
+        return redirect(url_for("merchant_login"))
+
+    otp = request.form.get("otp", "").strip()
+    mid = session["merchant_id"]
+
+    conn = db()
+    res = conn.execute("""
+        SELECT * FROM reservations 
+        WHERE pickup_otp=? AND merchant_id=? AND status='ACTIVE'
+    """, (otp, mid)).fetchone()
+
+    if not res:
+        conn.close()
+        flash("❌ Invalid or Expired Pickup OTP! Please check with customer.", "error")
+        return redirect(url_for("merchant_dashboard"))
+
+    # Complete pickup
+    conn.execute("UPDATE reservations SET status='COMPLETED' WHERE id=?", (res["id"],))
+    
+    # Create completed order record for merchant ledger
+    cur = conn.execute("""
+        INSERT INTO orders(customer_id, status, total, discount_amount, coupon_code, payment_status, tracking_id, created_at)
+        VALUES(?, 'Delivered (Store Pickup)', ?, 0.0, 'STORE_PICKUP', 'Paid at Counter', ?, ?)
+    """, (res["customer_id"], res["price"] * res["quantity"], f"PICKUP-{otp}", datetime.utcnow().isoformat()))
+    new_oid = cur.lastrowid
+
+    conn.execute("""
+        INSERT INTO order_items(order_id, product_id, quantity, price, merchant_id)
+        VALUES(?,?,?,?,?)
+    """, (new_oid, res["product_id"], res["quantity"], res["price"], mid))
+
+    conn.commit()
+    conn.close()
+
+    flash(f"✅ OTP Verified! Handover completed for '{res['product_name']}'. ₹{res['price']:,.2f} recorded.", "success")
     return redirect(url_for("merchant_dashboard"))
 
 

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Your Exclusive Deals & Offers — DataCart{% endblock %}
+
+{% block content %}
+
+<div style="max-width:1100px; margin:0 auto;">
+  
+  <div class="hero-banner" style="padding:28px 32px; margin-bottom:24px; background:linear-gradient(135deg, #1f2937, #111827);">
+    <div class="hero-content">
+      <span class="hero-tag" style="background:var(--amz-orange); color:#111;">🎯 Tailored Customer Incentives</span>
+      <h1>Your Personalized <span style="color:var(--amz-accent)">Deals & Rewards</span></h1>
+      <p>
+        Our Python Analytics Engine analyzes your browsing and purchase frequency to unlock exclusive discounts 
+        and high-value retention vouchers.
+      </p>
+    </div>
+  </div>
+
+  {% if customer %}
+    <!-- Customer Specific AI Offer Card -->
+    <div class="section-box" style="background:linear-gradient(135deg, #0f2744, #081729); color:#ffffff; border:1px solid #1e4976; margin-bottom:28px; padding:28px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:20px;">
+        <div style="max-width:600px;">
+          <span class="strip-badge">{{ customer.personalized_offer.badge }}</span>
+          <h2 style="font-size:24px; font-weight:800; margin:10px 0 6px; color:#ffffff;">
+            {{ customer.personalized_offer.title }}
+          </h2>
+          <p style="color:#cbd5e1; font-size:14px; line-height:1.6; margin-bottom:14px;">
+            {{ customer.personalized_offer.description }}
+          </p>
+          <div style="display:flex; gap:16px; font-size:12px; color:#94a3b8;">
+            <span>⏱️ <strong>Urgency:</strong> {{ customer.personalized_offer.urgency }}</span>
+            <span>💳 <strong>Min Spend:</strong> ₹{{ customer.personalized_offer.min_spend }}</span>
+          </div>
+        </div>
+
+        <div style="background:#0b1a2d; border:2px dashed #38bdf8; border-radius:12px; padding:20px; text-align:center; min-width:240px;">
+          <div style="font-size:11px; color:#94a3b8; text-transform:uppercase; font-weight:700;">PROMO CODE</div>
+          <div style="font-size:24px; font-weight:900; color:#febd69; letter-spacing:1px; margin:6px 0;">
+            {{ customer.personalized_offer.code }}
+          </div>
+          <div style="font-size:12px; color:#42e8b4; font-weight:700; margin-bottom:12px;">
+            Flat {{ customer.personalized_offer.discount_pct }}% OFF
+          </div>
+          
+          <form method="post" action="{{ url_for('apply_coupon') }}">
+            <input type="hidden" name="coupon_code" value="{{ customer.personalized_offer.code }}">
+            <button type="submit" class="btn-amz-primary" style="font-size:12px;">
+              Apply Coupon to Cart
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="section-box" style="margin-bottom:24px; text-align:center; padding:30px;">
+      <h3>Sign in to reveal your custom personalized AI discount</h3>
+      <p style="color:var(--amz-muted); margin:8px 0 16px;">We compute dynamic offers based on your previous order frequency and favorite categories.</p>
+      <a href="{{ url_for('login') }}" class="btn-amz-buy" style="display:inline-block; max-width:200px;">Sign In Now</a>
+    </div>
+  {% endif %}
+
+  <!-- Sitewide Active Promotion Deals -->
+  <div class="section-box">
+    <div class="section-header">
+      <h2>Sitewide Promotion Coupons</h2>
+      <span class="sub-count">Available for all customers</span>
+    </div>
+
+    <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:16px;">
+      {% for off in general_offers %}
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:18px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <span class="badge-flag prime" style="position:static; margin-bottom:6px; display:inline-block;">{{ off.badge }}</span>
+            <h3 style="font-size:16px; font-weight:700; margin-bottom:4px;">{{ off.title }}</h3>
+            <p style="font-size:12px; color:var(--amz-muted); margin-bottom:8px;">{{ off.description }}</p>
+            <div style="font-size:11px; color:var(--amz-muted);">Min Spend: ₹{{ off.min_spend }} · Code: <strong>{{ off.code }}</strong></div>
+          </div>
+          <form method="post" action="{{ url_for('apply_coupon') }}">
+            <input type="hidden" name="coupon_code" value="{{ off.code }}">
+            <button type="submit" class="coupon-pill-btn" style="padding:6px 12px; font-size:13px;">Apply Code</button>
+          </form>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Recommended Category Price Drops -->
+  <div class="section-box">
+    <div class="section-header">
+      <h2>🔥 Top Recommended Deals & Price Drops</h2>
+      <span class="sub-count">Selected for maximum value</span>
+    </div>
+
+    <div class="products-grid">
+      {% for p in category_deals %}
+        <div class="product-card">
+          <span class="badge-flag deal">{{ p.badge }}</span>
+
+          <a href="{{ url_for('product', pid=p.id) }}" class="product-img-wrapper">
+            <img class="product-img" src="{{ p.image_url }}" alt="{{ p.name }}">
+          </a>
+
+          <div class="product-info">
+            <span class="product-category-tag">{{ p.category }}</span>
+            <a href="{{ url_for('product', pid=p.id) }}" class="product-title" title="{{ p.name }}">
+              {{ p.name }}
+            </a>
+
+            <div class="rating-row">
+              <span class="stars">★★★★★</span>
+              <span class="rating-count">★ {{ p.rating }} ({{ p.review_count }})</span>
+            </div>
+
+            <div class="price-row">
+              <span class="current-price"><span class="currency">₹</span>{{"{:,.0f}".format(p.price)}}</span>
+              <span class="original-price">₹{{"{:,.0f}".format(p.original_price)}}</span>
+              <span class="discount-badge">{{ "%.0f"|format((p.original_price - p.price) / p.original_price * 100) }}% off</span>
+            </div>
+
+            <div class="prime-delivery-tag">✓ Prime Eligible</div>
+
+            <div class="product-actions">
+              <form method="post" action="{{ url_for('add_cart', pid=p.id) }}" style="width:100%">
+                <button class="btn-amz-primary" type="submit">Add to Cart</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
