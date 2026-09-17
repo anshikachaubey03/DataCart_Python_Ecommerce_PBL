@@ -1,0 +1,106 @@
+﻿{% extends base.html %}
+
+{% block title %}My Store Pickup Holds — DataCart{% endblock %}
+
+{% block content %}
+<div class=orders-container style=max-width:960px; margin:24px auto;>
+  
+  <div style=display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;>
+    <div>
+      <h1 style=font-size:24px; font-weight:900; color:#0f172a; margin:0;>🏪 My 24-Hour Store Pickup Holds</h1>
+      <p style=color:#64748b; font-size:13px; margin:4px 0 0;>Zero-Advance reservations held for you at verified local showrooms in Ankleshwar.</p>
+    </div>
+    <a href={{ url_for('home') }} class=btn-amz-secondary style=font-size:13px; padding:8px 16px;>
+      ← Back to Shopping
+    </a>
+  </div>
+
+  {% if not reservations %}
+    <div style=background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:48px 24px; text-align:center;>
+      <div style=font-size:48px; margin-bottom:12px;>🏬</div>
+      <h3 style=font-size:18px; font-weight:800; color:#0f172a; margin:0 0 6px;>No Active Store Holds</h3>
+      <p style=color:#64748b; font-size:14px; margin:0 0 18px;>You haven't reserved any items for showroom pickup yet.</p>
+      <a href={{ url_for('home') }} class=btn-amz-buy style=display:inline-block; font-size:13px; padding:10px 20px;>
+        Explore Local Stores
+      </a>
+    </div>
+  {% else %}
+    <div style=display:flex; flex-direction:column; gap:16px;>
+      {% for r in reservations %}
+        <div style=background:#ffffff; border:1px solid {% if r.status == 'ACTIVE' %}#86efac{% else %}#e2e8f0{% endif %}; border-radius:12px; padding:20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);>
+          
+          <div style=display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:14px; margin-bottom:16px; flex-wrap:wrap; gap:10px;>
+            <div>
+              <span style=font-size:11px; color:#64748b; text-transform:uppercase; font-weight:700;>RESERVATION ID</span>
+              <div style=font-size:15px; font-weight:800; color:#0f172a;>#RES-{{ r.id }}</div>
+            </div>
+            <div>
+              <span style=font-size:11px; color:#64748b; text-transform:uppercase; font-weight:700;>STORE SHOWROOM</span>
+              <div style=font-size:14px; font-weight:700; color:#2563eb;>{{ r.store_name }}</div>
+            </div>
+            <div>
+              <span style=font-size:11px; color:#64748b; text-transform:uppercase; font-weight:700;>STATUS</span>
+              <div>
+                {% if r.status == 'ACTIVE' %}
+                  <span style=background:#ecfdf5; color:#065f46; font-size:11px; font-weight:800; padding:3px 8px; border-radius:4px;>
+                    🟢 ACTIVE · READY AT COUNTER
+                  </span>
+                {% elif r.status == 'COMPLETED' %}
+                  <span style=background:#f1f5f9; color:#475569; font-size:11px; font-weight:800; padding:3px 8px; border-radius:4px;>
+                    ✓ COLLECTED
+                  </span>
+                {% else %}
+                  <span style=background:#fef2f2; color:#991b1b; font-size:11px; font-weight:800; padding:3px 8px; border-radius:4px;>
+                    CANCELLED / EXPIRED
+                  </span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div style=display:flex; gap:20px; align-items:center; flex-wrap:wrap;>
+            <img src={{ r.image_url }} alt={{ r.product_name }} style=width:90px; height:90px; object-fit:contain; background:#f8fafc; border-radius:8px; border:1px solid #f1f5f9;>
+            
+            <div style=flex:1; min-width:240px;>
+              <h3 style=font-size:16px; font-weight:800; color:#0f172a; margin:0 0 6px;>{{ r.product_name }}</h3>
+              <div style=font-size:13px; color:#64748b; margin-bottom:4px;>📍 <strong>Address:</strong> {{ r.store_address }}</div>
+              <div style=font-size:15px; font-weight:800; color:#0f172a;>Pay at Counter: ₹{{{:,.0f}.format(r.price)}}</div>
+            </div>
+
+            <!-- 6-Digit Counter OTP Ticket -->
+            {% if r.status == 'ACTIVE' %}
+              <div style=background:#0f172a; color:#fff; border-radius:10px; padding:16px 24px; text-align:center; min-width:180px;>
+                <span style=font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; font-weight:700;>Show at Counter</span>
+                <div style=font-size:26px; font-weight:900; letter-spacing:4px; color:#38bdf8; margin:4px 0;>{{ r.pickup_otp }}</div>
+                <span style=font-size:10px; color:#86efac;>Expires in 24 Hours</span>
+              </div>
+            {% endif %}
+          </div>
+
+          {% if r.status == 'ACTIVE' %}
+            <div style=display:flex; justify-content:flex-end; gap:12px; margin-top:16px; border-top:1px solid #f1f5f9; padding-top:12px;>
+              {% if r.store_whatsapp %}
+                <a 
+                  href=https://wa.me/{{ r.store_whatsapp }}?text=Hello%20{{ r.store_name }},%20I%20have%20an%20active%20reservation%20#RES-{{ r.id }}%20(OTP:%20{{ r.pickup_otp }})%20for%20{{ r.product_name }} 
+                  target=_blank 
+                  class=btn-amz-secondary 
+                  style=font-size:12px; padding:6px 12px; background:#25d366; color:#fff; border:none;
+                >
+                  💬 WhatsApp Store
+                </a>
+              {% endif %}
+              <form method=post action={{ url_for('cancel_reservation', rid=r.id) }} onsubmit=return confirm('Cancel this store hold?');>
+                <button type=submit class=btn-amz-secondary style=font-size:12px; padding:6px 12px; color:#dc2626; border-color:#fca5a5;>
+                  Cancel Hold
+                </button>
+              </form>
+            </div>
+          {% endif %}
+
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

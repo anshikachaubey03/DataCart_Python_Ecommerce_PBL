@@ -80,6 +80,14 @@
           <span class="line-2">& Orders</span>
         </a>
 
+        <!-- Store Pickup Holds -->
+        {% if session.get('customer_id') %}
+          <a class="nav-item" href="{{ url_for('customer_reservations') }}">
+            <span class="line-1">Pickup</span>
+            <span class="line-2" style="color:#86efac;">Holds 🏪</span>
+          </a>
+        {% endif %}
+
         <!-- Merchant Seller Central Link -->
         {% if is_merchant %}
           <a class="nav-item" href="{{ url_for('merchant_dashboard') }}" title="Manage your store">
